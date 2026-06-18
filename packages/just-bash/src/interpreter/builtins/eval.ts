@@ -75,6 +75,9 @@ export async function handleEval(
     if ((error as ParseException).name === "ParseException") {
       return failure(`bash: eval: ${(error as Error).message}\n`);
     }
+    if ((error as Error).message?.startsWith("Unsupported shell syntax:")) {
+      return failure(`bash: eval: ${(error as Error).message}\n`, 2);
+    }
     throw error;
   } finally {
     // Restore groupStdin

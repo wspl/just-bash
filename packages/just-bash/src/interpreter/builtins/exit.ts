@@ -19,6 +19,9 @@ export function handleExit(ctx: InterpreterContext, args: string[]): never {
     if (arg === "" || Number.isNaN(parsed) || !/^-?\d+$/.test(arg)) {
       stderr = `bash: exit: ${arg}: numeric argument required\n`;
       exitCode = 2;
+    } else if (args.length > 1) {
+      stderr = "bash: exit: too many arguments\n";
+      exitCode = 1;
     } else {
       // Exit codes are modulo 256 (wrap around)
       exitCode = ((parsed % 256) + 256) % 256;

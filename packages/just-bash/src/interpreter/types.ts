@@ -5,6 +5,7 @@
 import type {
   CommandNode,
   FunctionDefNode,
+  RedirectionOperator,
   ScriptNode,
   StatementNode,
 } from "../ast/types.js";
@@ -307,10 +308,24 @@ export interface ProcessState {
 export interface IOState {
   /** Stdin available for commands in compound commands (groups, subshells, while loops with piped input) */
   groupStdin?: string;
+  /** Current command received stdin from a pipeline, even when the pipe is empty. */
+  pipelineStdinProvided?: boolean;
   /** File descriptors for process substitution and here-docs */
   fileDescriptors?: Map<number, string>;
   /** Next available file descriptor for {varname}>file allocation (starts at 10) */
   nextFd?: number;
+}
+
+export interface HostSpawnRedirection {
+  fd: number | null;
+  operator: RedirectionOperator;
+  target: string;
+}
+
+export interface JobControlHooks {
+  startBackground?: (statement: StatementNode) => Promise<ExecResult | null>;
+  jobs?: (args: string[]) => Promise<ExecResult>;
+  wait?: (args: string[]) => Promise<ExecResult>;
 }
 
 // ============================================================================
@@ -449,6 +464,12 @@ export interface InterpreterContext {
    * routes calls through this callback.
    */
   invokeTool?: (path: string, argsJson: string) => Promise<string>;
+  /** Reject timed pipelines instead of executing them. */
+  rejectTimedPipelines?: boolean;
+  /** Redirections for the simple command currently being dispatched to hostSpawn. */
+  currentRedirections?: HostSpawnRedirection[];
+  /** Optional host-backed job control for background statements and jobs/wait builtins. */
+  jobControl?: JobControlHooks;
   /**
    * External command execution hook. When present, commands that are not
    * shell builtins, registered commands, or shell functions are dispatched
@@ -462,7 +483,13 @@ export interface InterpreterContext {
   hostSpawn?: (
     command: string,
     args: string[],
-    options: { cwd: string; env: Record<string, string>; stdin: string },
+    options: {
+      cwd: string;
+      env: Record<string, string>;
+      stdin: string;
+      stdinProvided?: boolean;
+      redirections?: HostSpawnRedirection[];
+    },
   ) => Promise<ExecResult>;
   /**
    * Command resolution hook for `command -v` / `type`. When present, PATH

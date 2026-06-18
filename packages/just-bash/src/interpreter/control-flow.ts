@@ -42,25 +42,79 @@ export async function executeIf(
   ctx: InterpreterContext,
   node: IfNode,
 ): Promise<ExecResult> {
+  const preOpenError = await preOpenOutputRedirects(ctx, node.redirections);
+  if (preOpenError) {
+    return preOpenError;
+  }
+
   let stdout = "";
   let stderr = "";
+  let hasInputRedirection = false;
+  let effectiveStdin = "";
 
-  for (const clause of node.clauses) {
-    // Condition evaluation should not trigger errexit
-    const condResult = await executeCondition(ctx, clause.condition);
-    stdout += condResult.stdout;
-    stderr += condResult.stderr;
-
-    if (condResult.exitCode === 0) {
-      return executeStatements(ctx, clause.body, stdout, stderr);
+  for (const redir of node.redirections) {
+    if (
+      (redir.operator === "<<" || redir.operator === "<<-") &&
+      redir.target.type === "HereDoc"
+    ) {
+      const hereDoc = redir.target as HereDocNode;
+      let content = await expandWord(ctx, hereDoc.content);
+      if (hereDoc.stripTabs) {
+        content = content
+          .split("\n")
+          .map((line) => line.replace(/^\t+/, ""))
+          .join("\n");
+      }
+      effectiveStdin = content;
+      hasInputRedirection = true;
+    } else if (redir.operator === "<<<" && redir.target.type === "Word") {
+      effectiveStdin = `${await expandWord(ctx, redir.target as WordNode)}\n`;
+      hasInputRedirection = true;
+    } else if (redir.operator === "<" && redir.target.type === "Word") {
+      try {
+        const target = await expandWord(ctx, redir.target as WordNode);
+        const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
+        effectiveStdin = await ctx.fs.readFile(filePath);
+        hasInputRedirection = true;
+      } catch {
+        const target = await expandWord(ctx, redir.target as WordNode);
+        return failure(`bash: ${target}: No such file or directory\n`);
+      }
     }
   }
 
-  if (node.elseBody) {
-    return executeStatements(ctx, node.elseBody, stdout, stderr);
+  const savedGroupStdin = ctx.state.groupStdin;
+  if (hasInputRedirection) {
+    ctx.state.groupStdin = effectiveStdin;
   }
 
-  return result(stdout, stderr, 0);
+  let bodyResult: ExecResult;
+
+  try {
+    for (const clause of node.clauses) {
+      // Condition evaluation should not trigger errexit
+      const condResult = await executeCondition(ctx, clause.condition);
+      stdout += condResult.stdout;
+      stderr += condResult.stderr;
+
+      if (condResult.exitCode === 0) {
+        bodyResult = await executeStatements(ctx, clause.body, stdout, stderr);
+        return applyRedirections(ctx, bodyResult, node.redirections);
+      }
+    }
+
+    if (node.elseBody) {
+      bodyResult = await executeStatements(ctx, node.elseBody, stdout, stderr);
+    } else {
+      bodyResult = result(stdout, stderr, 0);
+    }
+  } finally {
+    if (hasInputRedirection) {
+      ctx.state.groupStdin = savedGroupStdin;
+    }
+  }
+
+  return applyRedirections(ctx, bodyResult, node.redirections);
 }
 
 export async function executeFor(

@@ -390,7 +390,7 @@ export function handleSet(ctx: InterpreterContext, args: string[]): ExecResult {
         if (ctx.state.options.posix) {
           throw new PosixFatalError(1, "", errorMsg);
         }
-        return failure(errorMsg);
+        return failure(errorMsg, 2);
       }
       setShellOption(ctx, LONG_OPTION_MAP.get(optName) ?? null, arg === "-o");
       i += 2;
@@ -454,7 +454,7 @@ export function handleSet(ctx: InterpreterContext, args: string[]): ExecResult {
               if (ctx.state.options.posix) {
                 throw new PosixFatalError(1, "", errorMsg);
               }
-              return failure(errorMsg);
+              return failure(errorMsg, 2);
             }
             setShellOption(ctx, LONG_OPTION_MAP.get(optName) ?? null, enable);
             consumedArgs++;
@@ -477,7 +477,7 @@ export function handleSet(ctx: InterpreterContext, args: string[]): ExecResult {
           if (ctx.state.options.posix) {
             throw new PosixFatalError(1, "", errorMsg);
           }
-          return failure(errorMsg);
+          return failure(errorMsg, 2);
         }
         setShellOption(ctx, SHORT_OPTION_MAP.get(flag) ?? null, enable);
       }
@@ -517,7 +517,7 @@ export function handleSet(ctx: InterpreterContext, args: string[]): ExecResult {
       if (ctx.state.options.posix) {
         throw new PosixFatalError(1, "", errorMsg);
       }
-      return failure(errorMsg);
+      return failure(errorMsg, 2);
     }
 
     // Non-option arguments are positional parameters

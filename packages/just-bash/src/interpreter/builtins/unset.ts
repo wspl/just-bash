@@ -341,7 +341,7 @@ export async function handleUnset(
       // Regular variable with -v: only delete variable, NOT function
       // Validate variable name
       if (!isValidVariableName(arg)) {
-        stderr += `bash: unset: \`${arg}': not a valid identifier\n`;
+        stderr += `bash: unset: ${arg}: not a valid identifier\n`;
         exitCode = 1;
         continue;
       }
@@ -497,7 +497,7 @@ export async function handleUnset(
     // Regular variable - check if it's a nameref and unset the target
     // Validate variable name
     if (!isValidVariableName(arg)) {
-      stderr += `bash: unset: \`${arg}': not a valid identifier\n`;
+      stderr += `bash: unset: ${arg}: not a valid identifier\n`;
       exitCode = 1;
       continue;
     }

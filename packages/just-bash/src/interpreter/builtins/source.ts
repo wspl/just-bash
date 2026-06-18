@@ -11,6 +11,7 @@ import type { InterpreterContext } from "../types.js";
 export async function handleSource(
   ctx: InterpreterContext,
   args: string[],
+  stdin = "",
 ): Promise<ExecResult> {
   // Handle -- to end options (ignored like bash does)
   let sourceArgs = args;
@@ -97,10 +98,15 @@ export async function handleSource(
 
   // Save and restore current source context for BASH_SOURCE tracking
   const savedSource = ctx.state.currentSource;
+  const hasExplicitStdin = stdin !== "";
+  const savedGroupStdin = ctx.state.groupStdin;
 
   const cleanup = (): void => {
     ctx.state.sourceDepth--;
     ctx.state.currentSource = savedSource;
+    if (hasExplicitStdin) {
+      ctx.state.groupStdin = savedGroupStdin;
+    }
     // Restore positional parameters if we changed them
     if (sourceArgs.length > 1) {
       for (const [key, value] of savedPositional) {
@@ -123,6 +129,9 @@ export async function handleSource(
   }
   // Set current source to the file being sourced (for function definitions)
   ctx.state.currentSource = filename;
+  if (hasExplicitStdin) {
+    ctx.state.groupStdin = stdin;
+  }
   try {
     const ast = parse(content);
     const result = await ctx.executeScript(ast);

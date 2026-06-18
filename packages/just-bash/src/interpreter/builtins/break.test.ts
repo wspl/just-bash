@@ -90,11 +90,10 @@ describe("break builtin", () => {
   });
 
   describe("error cases", () => {
-    it("should silently do nothing when not in loop", async () => {
+    it("should warn and return 0 when not in loop", async () => {
       const env = new Bash();
       const result = await env.exec("break");
-      // In bash, break outside a loop silently does nothing
-      expect(result.stderr).toBe("");
+      expect(result.stderr).toContain("only meaningful");
       expect(result.exitCode).toBe(0);
     });
 
@@ -116,8 +115,8 @@ describe("break builtin", () => {
           break 0
         done
       `);
-      expect(result.stderr).toContain("numeric argument required");
-      expect(result.exitCode).toBe(128); // bash returns 128 for invalid break args
+      expect(result.stderr).toContain("loop count out of range");
+      expect(result.exitCode).toBe(0);
     });
 
     it("should error on negative argument", async () => {
@@ -127,8 +126,8 @@ describe("break builtin", () => {
           break -1
         done
       `);
-      expect(result.stderr).toContain("numeric argument required");
-      expect(result.exitCode).toBe(128); // bash returns 128 for invalid break args
+      expect(result.stderr).toContain("loop count out of range");
+      expect(result.exitCode).toBe(0);
     });
 
     it("should error on too many arguments (bash behavior)", async () => {

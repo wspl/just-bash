@@ -397,6 +397,78 @@ export async function preOpenOutputRedirects(
   return null; // Success - no error
 }
 
+/**
+ * Validate output redirections before running a simple command.
+ *
+ * Unlike preOpenOutputRedirects, this does not create or truncate files. Simple
+ * commands still need to fail before command execution when redirection setup
+ * would fail (for example, noclobber), but their output is written later by the
+ * normal redirection layer or host-spawn sink.
+ */
+export async function validateOutputRedirects(
+  ctx: InterpreterContext,
+  redirections: RedirectionNode[],
+  preExpandedTargets?: ExpandedRedirectTargets,
+): Promise<ExecResult | null> {
+  for (let i = 0; i < redirections.length; i++) {
+    const redir = redirections[i];
+    if (redir.target.type === "HereDoc") {
+      continue;
+    }
+
+    const isGreaterAmpersand = redir.operator === ">&";
+    if (
+      redir.operator !== ">" &&
+      redir.operator !== ">|" &&
+      redir.operator !== "&>" &&
+      !isGreaterAmpersand
+    ) {
+      continue;
+    }
+
+    let target: string;
+    const preExpanded = preExpandedTargets?.get(i);
+    if (preExpanded !== undefined) {
+      target = preExpanded;
+    } else if (isGreaterAmpersand) {
+      target = await expandWord(ctx, redir.target as WordNode);
+    } else {
+      const expandResult = await expandRedirectTarget(
+        ctx,
+        redir.target as WordNode,
+      );
+      if ("error" in expandResult) {
+        return makeResult("", expandResult.error, 1);
+      }
+      target = expandResult.target;
+    }
+
+    if (
+      isGreaterAmpersand &&
+      (target === "-" ||
+        !Number.isNaN(Number.parseInt(target, 10)) ||
+        redir.fd != null)
+    ) {
+      continue;
+    }
+
+    const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
+    if (filePath.includes("\0")) {
+      return makeResult("", `bash: ${target}: No such file or directory\n`, 1);
+    }
+
+    const error = await checkOutputRedirectTarget(ctx, filePath, target, {
+      checkNoclobber: true,
+      isClobber: redir.operator === ">|",
+    });
+    if (error) {
+      return makeResult("", error, 1);
+    }
+  }
+
+  return null;
+}
+
 export async function applyRedirections(
   ctx: InterpreterContext,
   result: ExecResult,
@@ -404,6 +476,8 @@ export async function applyRedirections(
   preExpandedTargets?: ExpandedRedirectTargets,
 ): Promise<ExecResult> {
   let { stdout, stderr, exitCode } = result;
+  const originalStdout = stdout;
+  const originalStderr = stderr;
 
   // Determine encoding for stdout writes from the producer's explicit
   // shape rather than guessing at the bytes:
@@ -426,6 +500,25 @@ export async function applyRedirections(
     : "utf8";
   const getStdoutEncoding = (_content: string): "binary" | "utf8" =>
     stdoutFileEncoding;
+  const getFileRedirectTarget = async (
+    index: number,
+  ): Promise<string | null> => {
+    const preExpanded = preExpandedTargets?.get(index);
+    if (preExpanded !== undefined) {
+      return preExpanded;
+    }
+    const expandResult = await expandRedirectTarget(
+      ctx,
+      redirections[index].target as WordNode,
+    );
+    if ("error" in expandResult) {
+      stderr += expandResult.error;
+      exitCode = 1;
+      stdout = "";
+      return null;
+    }
+    return expandResult.target;
+  };
 
   for (let i = 0; i < redirections.length; i++) {
     const redir = redirections[i];
@@ -514,6 +607,49 @@ export async function applyRedirections(
             exitCode = 1;
             stdout = "";
             break;
+          }
+          const previousRedir = redirections[i - 1];
+          if (
+            previousRedir &&
+            (previousRedir.operator === ">&" ||
+              previousRedir.operator === "<&") &&
+            (previousRedir.fd ?? 1) === 2
+          ) {
+            const previousTarget =
+              preExpandedTargets?.get(i - 1) ??
+              (await expandWord(ctx, previousRedir.target as WordNode));
+            if (previousTarget === "1" || previousTarget === "&1") {
+              await ctx.fs.writeFile(
+                filePath,
+                originalStdout,
+                getStdoutEncoding(originalStdout),
+              );
+              stdout = originalStderr;
+              stderr = "";
+              break;
+            }
+          }
+          const nextRedir = redirections[i + 1];
+          if (
+            nextRedir &&
+            (nextRedir.operator === ">&" || nextRedir.operator === "<&") &&
+            (nextRedir.fd ?? 1) === 2
+          ) {
+            const nextTarget =
+              preExpandedTargets?.get(i + 1) ??
+              (await expandWord(ctx, nextRedir.target as WordNode));
+            if (nextTarget === "1" || nextTarget === "&1") {
+              const combined = stdout + stderr;
+              await ctx.fs.writeFile(
+                filePath,
+                combined,
+                getStdoutEncoding(combined),
+              );
+              stdout = "";
+              stderr = "";
+              i++;
+              break;
+            }
           }
           // Smart encoding: binary for byte data, UTF-8 for Unicode text
           await ctx.fs.writeFile(filePath, stdout, getStdoutEncoding(stdout));
@@ -645,7 +781,27 @@ export async function applyRedirections(
         // the persistent FD state here. The FD will be restored after this command.
         // Permanent FD closes are handled by `exec N>&-` in executeSimpleCommand.
         if (target === "-") {
-          // Don't delete the FD - command-level redirections are temporary
+          if (fd === 1) {
+            const previousRedir = redirections[i - 1];
+            if (
+              previousRedir &&
+              (previousRedir.operator === ">&" ||
+                previousRedir.operator === "<&") &&
+              (previousRedir.fd ?? 1) === 2
+            ) {
+              const previousTarget =
+                preExpandedTargets?.get(i - 1) ??
+                (await expandWord(ctx, previousRedir.target as WordNode));
+              stdout =
+                previousTarget === "1" || previousTarget === "&1"
+                  ? originalStderr
+                  : "";
+            } else {
+              stdout = "";
+            }
+          } else if (fd === 2) {
+            stderr = "";
+          }
           break;
         }
         // Handle FD move operation: N>&M- (duplicate M to N, then close M)
@@ -689,7 +845,7 @@ export async function applyRedirections(
         // >&2, 1>&2, 1<&2: redirect stdout to stderr
         if (target === "2" || target === "&2") {
           if (fd === 1) {
-            stderr += stdout;
+            stderr = stdout + stderr;
             stdout = "";
           }
         }
@@ -760,7 +916,7 @@ export async function applyRedirections(
               } else if (sourceFd === 2) {
                 // Target FD duplicates stderr - redirect stdout to stderr
                 if (fd === 1) {
-                  stderr += stdout;
+                  stderr = stdout + stderr;
                   stdout = "";
                 }
               } else {
@@ -864,6 +1020,37 @@ export async function applyRedirections(
           break;
         }
         // Smart encoding: binary for byte data, UTF-8 for Unicode text
+        const nextRedir = redirections[i + 1];
+        if (
+          nextRedir &&
+          (nextRedir.operator === ">" ||
+            nextRedir.operator === ">|" ||
+            nextRedir.operator === ">>") &&
+          (nextRedir.fd ?? 1) === 1
+        ) {
+          const nextTarget = await getFileRedirectTarget(i + 1);
+          if (nextTarget !== null) {
+            const nextPath = ctx.fs.resolvePath(ctx.state.cwd, nextTarget);
+            await ctx.fs.writeFile(filePath, stderr, getFileEncoding(stderr));
+            if (nextRedir.operator === ">>") {
+              await ctx.fs.appendFile(
+                nextPath,
+                stdout,
+                getStdoutEncoding(stdout),
+              );
+            } else {
+              await ctx.fs.writeFile(
+                nextPath,
+                stdout,
+                getStdoutEncoding(stdout),
+              );
+            }
+            stdout = "";
+            stderr = "";
+            i++;
+            break;
+          }
+        }
         const combined = stdout + stderr;
         await ctx.fs.writeFile(filePath, combined, getStdoutEncoding(combined));
         stdout = "";
@@ -893,6 +1080,37 @@ export async function applyRedirections(
           break;
         }
         // Smart encoding: binary for byte data, UTF-8 for Unicode text
+        const nextRedir = redirections[i + 1];
+        if (
+          nextRedir &&
+          (nextRedir.operator === ">" ||
+            nextRedir.operator === ">|" ||
+            nextRedir.operator === ">>") &&
+          (nextRedir.fd ?? 1) === 1
+        ) {
+          const nextTarget = await getFileRedirectTarget(i + 1);
+          if (nextTarget !== null) {
+            const nextPath = ctx.fs.resolvePath(ctx.state.cwd, nextTarget);
+            await ctx.fs.appendFile(filePath, stderr, getFileEncoding(stderr));
+            if (nextRedir.operator === ">>") {
+              await ctx.fs.appendFile(
+                nextPath,
+                stdout,
+                getStdoutEncoding(stdout),
+              );
+            } else {
+              await ctx.fs.writeFile(
+                nextPath,
+                stdout,
+                getStdoutEncoding(stdout),
+              );
+            }
+            stdout = "";
+            stderr = "";
+            i++;
+            break;
+          }
+        }
         const combined = stdout + stderr;
         await ctx.fs.appendFile(
           filePath,

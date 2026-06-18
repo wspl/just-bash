@@ -3,8 +3,13 @@
  */
 
 import type { ExecResult } from "../../types.js";
-import { ContinueError, ExitError, SubshellExitError } from "../errors.js";
-import { OK } from "../helpers/result.js";
+import {
+  BreakError,
+  BuiltinFatalError,
+  ContinueError,
+  SubshellExitError,
+} from "../errors.js";
+import { result } from "../helpers/result.js";
 import type { InterpreterContext } from "../types.js";
 
 export function handleContinue(
@@ -17,24 +22,26 @@ export function handleContinue(
     if (ctx.state.parentHasLoopContext) {
       throw new SubshellExitError();
     }
-    // Otherwise, continue silently does nothing (returns 0)
-    return OK;
+    return result("", "bash: continue: only meaningful in a loop\n", 0);
   }
 
   // bash: too many arguments is an error (exit code 1)
   if (args.length > 1) {
-    throw new ExitError(1, "", "bash: continue: too many arguments\n");
+    throw new BuiltinFatalError(1, "", "bash: continue: too many arguments\n");
   }
 
   let levels = 1;
   if (args.length > 0) {
     const n = Number.parseInt(args[0], 10);
-    if (Number.isNaN(n) || n < 1) {
-      throw new ExitError(
-        1,
+    if (Number.isNaN(n)) {
+      throw new BuiltinFatalError(
+        128,
         "",
         `bash: continue: ${args[0]}: numeric argument required\n`,
       );
+    }
+    if (n < 1) {
+      throw new BreakError(1, "", "bash: continue: loop count out of range\n");
     }
     levels = n;
   }

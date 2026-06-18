@@ -23,11 +23,22 @@ export function handleShift(
   // Default shift count is 1
   let n = 1;
 
+  if (args.length > 1) {
+    return failure("bash: shift: too many arguments\n");
+  }
+
   if (args.length > 0) {
     const parsed = Number.parseInt(args[0], 10);
-    if (Number.isNaN(parsed) || parsed < 0) {
+    if (Number.isNaN(parsed)) {
       const errorMsg = `bash: shift: ${args[0]}: numeric argument required\n`;
       // In POSIX mode, this error is fatal
+      if (ctx.state.options.posix) {
+        throw new PosixFatalError(1, "", errorMsg);
+      }
+      return failure(errorMsg);
+    }
+    if (parsed < 0) {
+      const errorMsg = "bash: shift: shift count out of range\n";
       if (ctx.state.options.posix) {
         throw new PosixFatalError(1, "", errorMsg);
       }

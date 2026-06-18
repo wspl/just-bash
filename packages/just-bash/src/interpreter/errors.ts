@@ -244,6 +244,22 @@ export class SubshellExitError extends ControlFlowError {
 }
 
 /**
+ * Error thrown when a builtin failure terminates the current non-interactive
+ * script, but is not an explicit `exit` command.
+ */
+export class BuiltinFatalError extends ControlFlowError {
+  readonly name = "BuiltinFatalError";
+
+  constructor(
+    public readonly exitCode: number,
+    stdout: string = "",
+    stderr: string = "",
+  ) {
+    super("builtin fatal error", stdout, stderr);
+  }
+}
+
+/**
  * Type guard for errors that exit the current scope (return, break, continue).
  * These need special handling vs errexit/nounset which terminate execution.
  */

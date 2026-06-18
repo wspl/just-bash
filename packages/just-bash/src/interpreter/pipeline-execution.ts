@@ -24,6 +24,15 @@ export type ExecuteCommandFn = (
   stdin: string,
 ) => Promise<ExecResult>;
 
+function isAssignmentOnlySimpleCommand(node: CommandNode): boolean {
+  return (
+    node.type === "SimpleCommand" &&
+    node.name === null &&
+    node.assignments.length > 0 &&
+    node.args.length === 0
+  );
+}
+
 /**
  * Execute a pipeline node (command or sequence of piped commands).
  */
@@ -71,18 +80,26 @@ export async function executePipeline(
     // In bash, all commands except the last run in subshells
     // With lastpipe enabled, the last command runs in the current shell
     const runsInSubshell =
-      isMultiCommandPipeline && (!isLast || !ctx.state.shoptOptions.lastpipe);
+      isMultiCommandPipeline &&
+      (!isLast ||
+        (!ctx.state.shoptOptions.lastpipe &&
+          !isAssignmentOnlySimpleCommand(command)));
 
     // Save environment for commands running in subshell context
     // This prevents variable assignments (e.g., ${cmd=echo}) from leaking to parent
     const savedEnv = runsInSubshell ? new Map(ctx.state.env) : null;
 
     let result: ExecResult;
+    const savedPipelineStdinProvided = ctx.state.pipelineStdinProvided;
+    ctx.state.pipelineStdinProvided = isMultiCommandPipeline && !isFirst;
     try {
       result = await executeCommand(command, stdin);
     } catch (error) {
       // BadSubstitutionError should fail the command but not abort the script
       if (error instanceof BadSubstitutionError) {
+        if (node.commands.length === 1) {
+          throw error;
+        }
         result = {
           stdout: error.stdout,
           stderr: error.stderr,
@@ -113,6 +130,8 @@ export async function executePipeline(
         }
         throw error;
       }
+    } finally {
+      ctx.state.pipelineStdinProvided = savedPipelineStdinProvided;
     }
 
     // Restore environment for subshell commands to prevent variable assignment leakage

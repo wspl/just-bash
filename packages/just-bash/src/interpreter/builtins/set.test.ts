@@ -302,7 +302,7 @@ describe("set builtin", () => {
     it("should reject an invalid bundled -o option name", async () => {
       const env = new Bash();
       const result = await env.exec("set -euo bogusoption");
-      expect(result.exitCode).toBe(1);
+      expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("bogusoption");
       expect(result.stderr).toContain("invalid option name");
     });
@@ -656,7 +656,7 @@ describe("set builtin", () => {
     it("should error on unknown short option", async () => {
       const env = new Bash();
       const result = await env.exec("set -z");
-      expect(result.exitCode).toBe(1);
+      expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("-z");
       expect(result.stderr).toContain("invalid option");
     });
@@ -664,7 +664,7 @@ describe("set builtin", () => {
     it("should error on unknown long option", async () => {
       const env = new Bash();
       const result = await env.exec("set -o unknownoption");
-      expect(result.exitCode).toBe(1);
+      expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("unknownoption");
       expect(result.stderr).toContain("invalid option name");
     });

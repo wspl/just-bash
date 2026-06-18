@@ -7,6 +7,7 @@
 
 import {
   BreakError,
+  BuiltinFatalError,
   ContinueError,
   ErrexitError,
   ExecutionLimitError,
@@ -72,6 +73,7 @@ export function handleLoopError(
 
   if (
     error instanceof ReturnError ||
+    error instanceof BuiltinFatalError ||
     error instanceof ErrexitError ||
     error instanceof ExitError ||
     error instanceof ExecutionLimitError

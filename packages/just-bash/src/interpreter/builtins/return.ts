@@ -14,7 +14,7 @@ export function handleReturn(
   // Check if we're in a function or sourced script
   if (ctx.state.callDepth === 0 && ctx.state.sourceDepth === 0) {
     return failure(
-      "bash: return: can only `return' from a function or sourced script\n",
+      "bash: return: can only 'return' from a function or sourced script (can only `return' from a function or sourced script)\n",
     );
   }
 

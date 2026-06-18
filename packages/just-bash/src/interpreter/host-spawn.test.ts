@@ -7,6 +7,7 @@ import { InMemoryFs } from "../fs/in-memory-fs/in-memory-fs.js";
 import { mapToRecord } from "../helpers/env.js";
 import type { InterpreterState } from "./types.js";
 import type { Command } from "../types.js";
+import type { StatementNode } from "../ast/types.js";
 
 describe("hostSpawn hook", () => {
   it("dispatches external commands to hostSpawn when present", async () => {
@@ -245,5 +246,85 @@ describe("hostSpawn hook", () => {
     expect(editorCalls).toEqual([{ args: ["foo", "bar"], cwd: "/home/user" }]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe("editor ran with foo bar\n");
+  });
+
+  it("dispatches background statements through jobControl when present", async () => {
+    const bash = new Bash();
+    const state = (bash as unknown as { state: InterpreterState }).state;
+    const commands = (bash as unknown as { commands: Map<string, Command> }).commands;
+    const fs = (bash as unknown as { fs: import("../fs/interface.js").IFileSystem }).fs;
+    const limits = resolveLimits({});
+    const backgroundCalls: string[] = [];
+    const hostCalls: Array<{ command: string; args: string[] }> = [];
+
+    const interpreter = new Interpreter(
+      {
+        fs,
+        commands,
+        limits,
+        exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+        hostSpawn: async (command, args) => {
+          hostCalls.push({ command, args });
+          return { stdout: "", stderr: `${command}: not found\n`, exitCode: 127 };
+        },
+        jobControl: {
+          startBackground: async (statement: StatementNode) => {
+            backgroundCalls.push(statement.sourceText ?? "");
+            return { stdout: "[1] sh -c exit 5\n", stderr: "", exitCode: 0 };
+          },
+        },
+      },
+      state,
+    );
+
+    const result = await interpreter.executeScript(parse("sh -c 'exit 5' &\necho after"));
+
+    expect(backgroundCalls).toEqual(["sh -c 'exit 5' &"]);
+    expect(hostCalls).toEqual([]);
+    expect(result.stdout).toBe("[1] sh -c exit 5\nafter\n");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("dispatches jobs and wait builtins through jobControl when present", async () => {
+    const bash = new Bash();
+    const state = (bash as unknown as { state: InterpreterState }).state;
+    const commands = (bash as unknown as { commands: Map<string, Command> }).commands;
+    const fs = (bash as unknown as { fs: import("../fs/interface.js").IFileSystem }).fs;
+    const limits = resolveLimits({});
+    const calls: Array<{ hook: "jobs" | "wait"; args: string[] }> = [];
+
+    const interpreter = new Interpreter(
+      {
+        fs,
+        commands,
+        limits,
+        exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+        hostSpawn: async (command) => ({
+          stdout: "",
+          stderr: `${command}: not found\n`,
+          exitCode: 127,
+        }),
+        jobControl: {
+          jobs: async (args) => {
+            calls.push({ hook: "jobs", args });
+            return { stdout: "[1] Running sh -c exit 5\n", stderr: "", exitCode: 0 };
+          },
+          wait: async (args) => {
+            calls.push({ hook: "wait", args });
+            return { stdout: "done\n", stderr: "", exitCode: 7 };
+          },
+        },
+      },
+      state,
+    );
+
+    const result = await interpreter.executeScript(parse("jobs\nwait %1"));
+
+    expect(calls).toEqual([
+      { hook: "jobs", args: [] },
+      { hook: "wait", args: ["%1"] },
+    ]);
+    expect(result.stdout).toBe("[1] Running sh -c exit 5\ndone\n");
+    expect(result.exitCode).toBe(7);
   });
 });

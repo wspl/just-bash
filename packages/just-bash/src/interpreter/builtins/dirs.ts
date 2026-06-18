@@ -84,14 +84,24 @@ export async function handlePushd(
   }
 
   if (targetDir === undefined) {
-    // No dir specified - swap top two entries if possible
-    if (stack.length < 2) {
+    // No dir specified - swap the current directory with the first stack entry.
+    if (stack.length < 1) {
       return failure("bash: pushd: no other directory\n", 1);
     }
-    const top = stack[0];
-    stack[0] = stack[1];
-    stack[1] = top;
-    targetDir = stack[0];
+    const newDir = stack.shift();
+    if (!newDir) {
+      return failure("bash: pushd: no other directory\n", 1);
+    }
+    const oldCwd = ctx.state.cwd;
+    stack.unshift(oldCwd);
+    ctx.state.previousDir = oldCwd;
+    ctx.state.cwd = newDir;
+    ctx.state.env.set("PWD", newDir);
+    ctx.state.env.set("OLDPWD", oldCwd);
+
+    const home = ctx.state.env.get("HOME") || "";
+    const output = `${[newDir, ...stack].map((p) => formatPath(p, home)).join(" ")}\n`;
+    return success(output);
   }
 
   // Resolve the target directory

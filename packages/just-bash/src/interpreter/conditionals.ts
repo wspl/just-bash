@@ -623,7 +623,12 @@ function patternToRegexStr(pattern: string, extglob: boolean): string {
     } else if (char === "[") {
       const closeIdx = pattern.indexOf("]", i + 1);
       if (closeIdx !== -1) {
-        regex += pattern.slice(i, closeIdx + 1);
+        const classBody = pattern.slice(i + 1, closeIdx);
+        if (classBody.startsWith("!")) {
+          regex += `[^${classBody.slice(1)}]`;
+        } else {
+          regex += pattern.slice(i, closeIdx + 1);
+        }
         i = closeIdx;
       } else {
         regex += "\\[";

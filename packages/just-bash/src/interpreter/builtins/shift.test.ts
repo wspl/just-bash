@@ -104,7 +104,7 @@ describe("shift builtin", () => {
         }
         myfunc a b
       `);
-      expect(result.stderr).toContain("numeric argument required");
+      expect(result.stderr).toContain("shift count out of range");
       expect(result.exitCode).toBe(1);
     });
 

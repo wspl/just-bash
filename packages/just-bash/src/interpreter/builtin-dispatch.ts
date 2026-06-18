@@ -98,6 +98,30 @@ export interface BuiltinDispatchContext {
   executeUserScript: ExecuteUserScriptFn;
 }
 
+const STDIN_CONSUMING_COMMANDS = new Set([
+  "awk",
+  "cat",
+  "cut",
+  "grep",
+  "head",
+  "jq",
+  "mapfile",
+  "read",
+  "readarray",
+  "sed",
+  "sort",
+  "tail",
+  "tee",
+  "tr",
+  "uniq",
+  "wc",
+  "xargs",
+]);
+
+function shouldConsumeGroupStdin(commandName: string): boolean {
+  return STDIN_CONSUMING_COMMANDS.has(commandName);
+}
+
 /**
  * Dispatch a command to the appropriate builtin handler or external command.
  * Returns null if the command should be handled by external command resolution.
@@ -174,7 +198,7 @@ export async function dispatchBuiltin(
     return handleDirs(ctx, args);
   }
   if (commandName === "source" || commandName === ".") {
-    return handleSource(ctx, args);
+    return handleSource(ctx, args, stdin);
   }
   if (commandName === "read") {
     return handleRead(ctx, args, stdin, stdinSourceFd);
@@ -187,6 +211,9 @@ export async function dispatchBuiltin(
   }
   if (commandName === "readonly") {
     return handleReadonly(ctx, args);
+  }
+  if (ctx.commands.has(commandName)) {
+    return null;
   }
   // User-defined functions override most builtins (except special ones above)
   // This needs to happen before true/false/let which are regular builtins
@@ -230,8 +257,16 @@ export async function dispatchBuiltin(
     const [cmd, ...rest] = args;
     return runCommand(cmd, rest, [], stdin, false, false, -1);
   }
+  if (commandName === "jobs") {
+    if (ctx.jobControl?.jobs) {
+      return ctx.jobControl.jobs(args);
+    }
+    return OK;
+  }
   if (commandName === "wait") {
-    // wait - wait for background jobs (stub: no-op in this context)
+    if (ctx.jobControl?.wait) {
+      return ctx.jobControl.wait(args);
+    }
     return OK;
   }
   if (commandName === "type") {
@@ -382,6 +417,7 @@ export async function executeExternalCommand(
     const registered = ctx.commands.get(commandName);
     if (registered) {
       const exportedEnv = buildExportedEnv();
+      const usesGroupStdin = stdin === "" && ctx.state.groupStdin !== undefined;
       const effectiveStdin = stdin || ctx.state.groupStdin || "";
       const cmdCtx: CommandContext = {
         fs: ctx.fs,
@@ -422,15 +458,32 @@ export async function executeExternalCommand(
         return failure(
           `${commandName}: ${sanitizeErrorMessage(getErrorMessage(error))}\n`,
         );
+      } finally {
+        if (
+          usesGroupStdin &&
+          (registered.consumesStdin || shouldConsumeGroupStdin(commandName))
+        ) {
+          ctx.state.groupStdin = "";
+        }
       }
     }
     const exportedEnv = buildExportedEnv();
+    const usesGroupStdin = stdin === "" && ctx.state.groupStdin !== undefined;
     const effectiveStdin = stdin || ctx.state.groupStdin || "";
-    return ctx.hostSpawn(commandName, args, {
-      cwd: ctx.state.cwd,
-      env: exportedEnv,
-      stdin: effectiveStdin,
-    });
+    try {
+      return await ctx.hostSpawn(commandName, args, {
+        cwd: ctx.state.cwd,
+        env: exportedEnv,
+        stdin: effectiveStdin,
+        stdinProvided:
+          stdin !== "" || usesGroupStdin || ctx.state.pipelineStdinProvided,
+        redirections: ctx.currentRedirections,
+      });
+    } finally {
+      if (usesGroupStdin && shouldConsumeGroupStdin(commandName)) {
+        ctx.state.groupStdin = "";
+      }
+    }
   }
 
   // External commands - resolve via PATH
@@ -488,6 +541,7 @@ export async function executeExternalCommand(
   // brand it. Commands that decode their input internally (sed, jq,
   // ...) return text via `textOutput()`, and the pipe / redirect layer
   // converts to bytes on their behalf.
+  const usesGroupStdin = stdin === "" && ctx.state.groupStdin !== undefined;
   const effectiveStdin = unsafeBytesFromLatin1(
     stdin || ctx.state.groupStdin || "",
   );
@@ -544,5 +598,9 @@ export async function executeExternalCommand(
     return failure(
       `${commandName}: ${sanitizeErrorMessage(getErrorMessage(error))}\n`,
     );
+  } finally {
+    if (usesGroupStdin && (cmd.consumesStdin || shouldConsumeGroupStdin(commandName))) {
+      ctx.state.groupStdin = "";
+    }
   }
 }

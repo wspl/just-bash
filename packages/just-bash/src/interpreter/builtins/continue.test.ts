@@ -90,11 +90,10 @@ describe("continue builtin", () => {
   });
 
   describe("error cases", () => {
-    it("should silently do nothing when not in loop", async () => {
+    it("should warn and return 0 when not in loop", async () => {
       const env = new Bash();
       const result = await env.exec("continue");
-      // In bash, continue outside a loop silently does nothing
-      expect(result.stderr).toBe("");
+      expect(result.stderr).toContain("only meaningful");
       expect(result.exitCode).toBe(0);
     });
 
@@ -106,7 +105,7 @@ describe("continue builtin", () => {
         done
       `);
       expect(result.stderr).toContain("numeric argument required");
-      expect(result.exitCode).toBe(1);
+      expect(result.exitCode).toBe(128);
     });
 
     it("should error on zero argument", async () => {
@@ -116,8 +115,8 @@ describe("continue builtin", () => {
           continue 0
         done
       `);
-      expect(result.stderr).toContain("numeric argument required");
-      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("loop count out of range");
+      expect(result.exitCode).toBe(0);
     });
 
     it("should error on negative argument", async () => {
@@ -127,8 +126,8 @@ describe("continue builtin", () => {
           continue -1
         done
       `);
-      expect(result.stderr).toContain("numeric argument required");
-      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("loop count out of range");
+      expect(result.exitCode).toBe(0);
     });
 
     it("should error on too many arguments (bash behavior)", async () => {

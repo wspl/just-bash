@@ -244,6 +244,12 @@ export interface Command {
    * trusted wrappers only at narrow infrastructure boundaries.
    */
   trusted?: boolean;
+  /**
+   * Whether this registered command consumes stdin when group/pipeline stdin is
+   * supplied implicitly. Commands like echo do not consume it; cat-like or
+   * host-extension commands with stdin-backed arguments usually do.
+   */
+  consumesStdin?: boolean;
   execute(args: string[], ctx: CommandContext): Promise<ExecResult>;
 }
 

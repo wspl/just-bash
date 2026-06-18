@@ -175,7 +175,8 @@ export async function handleErrorIfUnset(
           opCtx.inDoubleQuotes,
         )
       : `${parameter}: parameter null or not set`;
-    throw new ExitError(1, "", `bash: ${message}\n`);
+    const detail = operation.word ? `${parameter}: ${message}` : message;
+    throw new BadSubstitutionError(detail, "", `bash: ${detail}\n`);
   }
   return opCtx.effectiveValue;
 }
@@ -502,6 +503,9 @@ export async function handleSubstring(
   if (length !== undefined) {
     if (length < 0) {
       const endPos = chars.length + length;
+      if (endPos < start) {
+        throw new ArithmeticError(`${parameter}: substring expression < 0`);
+      }
       return chars.slice(start, Math.max(start, endPos)).join("");
     }
     return chars.slice(start, start + length).join("");

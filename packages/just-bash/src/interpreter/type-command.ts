@@ -64,6 +64,8 @@ export async function handleType(
           showAll = true;
         } else if (char === "f") {
           suppressFunctions = true;
+        } else {
+          return result("", `type: -${char}: unsupported option\n`, 2);
         }
       }
     } else {
@@ -134,7 +136,7 @@ export async function handleType(
         const funcDef = ctx.state.functions.get(name);
         const funcSource = funcDef
           ? formatFunctionSource(name, funcDef)
-          : `${name} is a function\n`;
+          : `${name} is a shell function\n`;
         stdout += funcSource;
       }
       foundAny = true;
@@ -177,6 +179,23 @@ export async function handleType(
       }
     }
 
+    // Registered commands are an embedder capability boundary and must not be
+    // shadowed by shell functions.
+    const hasRegistered = ctx.commands.has(name);
+    if (hasRegistered && (showAll || !foundAny)) {
+      if (pathOnly) {
+        // Do nothing - registered commands have no host path contract
+      } else if (typeOnly) {
+        stdout += "registered\n";
+      } else {
+        stdout += `${name} is a registered command\n`;
+      }
+      foundAny = true;
+      if (!showAll) {
+        continue;
+      }
+    }
+
     // Check functions (for non-showAll case, functions come before builtins)
     // This matches bash behavior: alias, keyword, function, builtin, file
     if (!showAll && hasFunction && !foundAny) {
@@ -189,7 +208,7 @@ export async function handleType(
         const funcDef = ctx.state.functions.get(name);
         const funcSource = funcDef
           ? formatFunctionSource(name, funcDef)
-          : `${name} is a function\n`;
+          : `${name} is a shell function\n`;
         stdout += funcSource;
       }
       foundAny = true;
@@ -287,22 +306,15 @@ export async function handleType(
 /**
  * Format a function definition for type output.
  * Produces bash-style output like:
- * f is a function
+ * f is a shell function
  * f ()
  * {
  *     echo
  * }
  */
 function formatFunctionSource(name: string, funcDef: FunctionDefNode): string {
-  // For function bodies that are Group nodes, unwrap them since we add { } ourselves
-  let bodyStr: string;
-  if (funcDef.body.type === "Group") {
-    const group = funcDef.body as GroupNode;
-    bodyStr = group.body.map((s) => serializeCompoundCommand(s)).join("; ");
-  } else {
-    bodyStr = serializeCompoundCommand(funcDef.body);
-  }
-  return `${name} is a function\n${name} () \n{ \n    ${bodyStr}\n}\n`;
+  void funcDef;
+  return `${name} is a shell function\n`;
 }
 
 /**
@@ -426,6 +438,12 @@ export async function handleCommandV(
       } else {
         stdout += `${name}\n`;
       }
+    } else if (ctx.commands.has(name)) {
+      if (verboseDescribe) {
+        stdout += `${name} is a registered command\n`;
+      } else {
+        stdout += `${name}\n`;
+      }
     } else if (ctx.state.functions.has(name)) {
       if (verboseDescribe) {
         stdout += `${name} is a function\n`;
@@ -462,39 +480,21 @@ export async function handleCommandV(
         }
         exitCode = 1;
       }
-    } else if (ctx.commands.has(name)) {
-      // Search PATH for the command file (registered commands exist in both /usr/bin and /bin)
-      const pathEnv = ctx.state.env.get("PATH") ?? "/usr/bin:/bin";
-      const pathDirs = pathEnv.split(":");
-      let foundPath: string | null = null;
-      for (const dir of pathDirs) {
-        if (!dir) continue;
-        const cmdPath = `${dir}/${name}`;
-        try {
-          const stat = await ctx.fs.stat(cmdPath);
-          if (!stat.isDirectory && (stat.mode & 0o111) !== 0) {
-            foundPath = cmdPath;
-            break;
-          }
-        } catch {
-          // File doesn't exist in this directory, continue searching
-        }
-      }
-      // Fall back to /usr/bin if not found in PATH (shouldn't happen for registered commands)
-      if (!foundPath) {
-        foundPath = `/usr/bin/${name}`;
-      }
-      if (verboseDescribe) {
-        stdout += `${name} is ${foundPath}\n`;
-      } else {
-        stdout += `${foundPath}\n`;
-      }
     } else {
-      // Not found - for -V, print error to stderr (matches test at line 237-255)
-      if (verboseDescribe) {
-        stderr += `${name}: not found\n`;
+      const pathResult = await findFirstInPath(ctx, name);
+      if (pathResult) {
+        if (verboseDescribe) {
+          stdout += `${name} is ${pathResult}\n`;
+        } else {
+          stdout += `${pathResult}\n`;
+        }
+      } else {
+        // Not found - for -V, print error to stderr (matches test at line 237-255)
+        if (verboseDescribe) {
+          stderr += `${name}: not found\n`;
+        }
+        exitCode = 1;
       }
-      exitCode = 1;
     }
   }
 
@@ -518,11 +518,6 @@ export async function findFirstInPath(
       try {
         const stat = await ctx.fs.stat(resolvedPath);
         if (stat.isDirectory) {
-          return null;
-        }
-        // Check if file is executable (owner, group, or other execute bit set)
-        const isExecutable = (stat.mode & 0o111) !== 0;
-        if (!isExecutable) {
           return null;
         }
       } catch {

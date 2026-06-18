@@ -41,13 +41,29 @@
       "types": "./src/interpreter/index.ts",
       "import": "./src/interpreter/index.ts"
     },
+    "./interpreter/errors": {
+      "types": "./src/interpreter/errors.ts",
+      "import": "./src/interpreter/errors.ts"
+    },
     "./parser": {
       "types": "./src/parser/parser.ts",
       "import": "./src/parser/parser.ts"
     },
+    "./parser/types": {
+      "types": "./src/parser/types.ts",
+      "import": "./src/parser/types.ts"
+    },
+    "./parser/lexer": {
+      "types": "./src/parser/lexer.ts",
+      "import": "./src/parser/lexer.ts"
+    },
     "./fs/interface": {
       "types": "./src/fs/interface.ts",
       "import": "./src/fs/interface.ts"
+    },
+    "./limits": {
+      "types": "./src/limits.ts",
+      "import": "./src/limits.ts"
     },
     "./types": {
       "types": "./src/types.ts",

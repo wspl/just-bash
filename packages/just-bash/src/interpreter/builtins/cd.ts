@@ -37,6 +37,9 @@ export async function handleCd(
 
   // Get the target directory
   const remainingArgs = args.slice(i);
+  if (remainingArgs.length > 1) {
+    return failure("bash: cd: too many arguments\n", 2);
+  }
   if (remainingArgs.length === 0) {
     target = ctx.state.env.get("HOME") || "/";
   } else if (remainingArgs[0] === "~") {

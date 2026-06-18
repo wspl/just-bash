@@ -109,10 +109,43 @@ export async function executeSubshell(
   const savedBashPid = ctx.state.bashPid;
   ctx.state.bashPid = ctx.state.nextVirtualPid++;
 
+  let effectiveStdin = stdin;
+  let hasInputRedirection = false;
+  for (const redir of node.redirections) {
+    if (
+      (redir.operator === "<<" || redir.operator === "<<-") &&
+      redir.target.type === "HereDoc"
+    ) {
+      const hereDoc = redir.target as HereDocNode;
+      let content = await expandWord(ctx, hereDoc.content);
+      if (hereDoc.stripTabs) {
+        content = content
+          .split("\n")
+          .map((line) => line.replace(/^\t+/, ""))
+          .join("\n");
+      }
+      effectiveStdin = content;
+      hasInputRedirection = true;
+    } else if (redir.operator === "<<<" && redir.target.type === "Word") {
+      effectiveStdin = `${await expandWord(ctx, redir.target as WordNode)}\n`;
+      hasInputRedirection = true;
+    } else if (redir.operator === "<" && redir.target.type === "Word") {
+      try {
+        const target = await expandWord(ctx, redir.target as WordNode);
+        const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
+        effectiveStdin = await ctx.fs.readFile(filePath);
+        hasInputRedirection = true;
+      } catch {
+        const target = await expandWord(ctx, redir.target as WordNode);
+        return result("", `bash: ${target}: No such file or directory\n`, 1);
+      }
+    }
+  }
+
   // Save any existing groupStdin and set new one from pipeline
   const savedGroupStdin = ctx.state.groupStdin;
-  if (stdin) {
-    ctx.state.groupStdin = stdin;
+  if (effectiveStdin || hasInputRedirection) {
+    ctx.state.groupStdin = effectiveStdin;
   }
 
   let stdout = "";

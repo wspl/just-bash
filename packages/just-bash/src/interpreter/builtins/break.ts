@@ -3,8 +3,8 @@
  */
 
 import type { ExecResult } from "../../types.js";
-import { BreakError, ExitError, SubshellExitError } from "../errors.js";
-import { OK } from "../helpers/result.js";
+import { BreakError, BuiltinFatalError, SubshellExitError } from "../errors.js";
+import { result } from "../helpers/result.js";
 import type { InterpreterContext } from "../types.js";
 
 export function handleBreak(
@@ -17,25 +17,26 @@ export function handleBreak(
     if (ctx.state.parentHasLoopContext) {
       throw new SubshellExitError();
     }
-    // Otherwise, break silently does nothing (returns 0)
-    return OK;
+    return result("", "bash: break: only meaningful in a loop\n", 0);
   }
 
   // bash: too many arguments is an error (exit code 1)
   if (args.length > 1) {
-    throw new ExitError(1, "", "bash: break: too many arguments\n");
+    throw new BuiltinFatalError(1, "", "bash: break: too many arguments\n");
   }
 
   let levels = 1;
   if (args.length > 0) {
     const n = Number.parseInt(args[0], 10);
-    if (Number.isNaN(n) || n < 1) {
-      // Invalid argument causes a fatal error in bash (exit code 128)
-      throw new ExitError(
+    if (Number.isNaN(n)) {
+      throw new BuiltinFatalError(
         128,
         "",
         `bash: break: ${args[0]}: numeric argument required\n`,
       );
+    }
+    if (n < 1) {
+      throw new BreakError(1, "", "bash: break: loop count out of range\n");
     }
     levels = n;
   }

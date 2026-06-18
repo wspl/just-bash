@@ -17,11 +17,13 @@ import type {
   GroupNode,
   HereDocNode,
   PipelineNode,
+  RedirectionNode,
   ScriptNode,
   SimpleCommandNode,
   StatementNode,
   SubshellNode,
   WordNode,
+  WordPart,
 } from "../ast/types.js";
 import {
   encodeUtf8ToBytes,
@@ -68,6 +70,7 @@ import {
   ArithmeticError,
   BadSubstitutionError,
   BraceExpansionError,
+  BuiltinFatalError,
   BreakError,
   ContinueError,
   ErrexitError,
@@ -98,8 +101,11 @@ import { traceSimpleCommand } from "./helpers/xtrace.js";
 import { executePipeline as executePipelineHelper } from "./pipeline-execution.js";
 import {
   applyRedirections,
+  type ExpandedRedirectTargets,
   preOpenOutputRedirects,
+  preExpandRedirectTargets,
   processFdVariableRedirections,
+  validateOutputRedirects,
 } from "./redirections.js";
 import { processAssignments } from "./simple-command-assignments.js";
 import {
@@ -107,9 +113,17 @@ import {
   executeSubshell as executeSubshellHelper,
   executeUserScript as executeUserScriptHelper,
 } from "./subshell-group.js";
-import type { InterpreterContext, InterpreterState } from "./types.js";
+import type {
+  HostSpawnRedirection,
+  InterpreterContext,
+  InterpreterState,
+} from "./types.js";
 
-export type { InterpreterContext, InterpreterState } from "./types.js";
+export type {
+  HostSpawnRedirection,
+  InterpreterContext,
+  InterpreterState,
+} from "./types.js";
 
 export interface InterpreterOptions {
   fs: IFileSystem;
@@ -141,6 +155,8 @@ export interface InterpreterOptions {
   jsBootstrapCode?: string;
   /** Tool invoker hook for js-exec's `tools` proxy */
   invokeTool?: (path: string, argsJson: string) => Promise<string>;
+  /** Reject timed pipelines instead of executing them. */
+  rejectTimedPipelines?: boolean;
   /**
    * External command execution hook. When present, commands that are not
    * shell builtins, registered commands, or shell functions are dispatched
@@ -149,6 +165,30 @@ export interface InterpreterOptions {
   hostSpawn?: InterpreterContext["hostSpawn"];
   /** Command resolution hook for `command -v` / `type`. */
   hostResolveCommand?: InterpreterContext["hostResolveCommand"];
+  /** Optional host-backed job control hooks for background statements and jobs/wait builtins. */
+  jobControl?: InterpreterContext["jobControl"];
+}
+
+function wordHasCommandSubstitution(word: WordNode | null | undefined): boolean {
+  if (!word) return false;
+  return word.parts.some(partHasCommandSubstitution);
+}
+
+function partHasCommandSubstitution(part: WordPart): boolean {
+  if (part.type === "CommandSubstitution") return true;
+  if (part.type === "DoubleQuoted") {
+    return part.parts.some(partHasCommandSubstitution);
+  }
+  if (part.type === "ParameterExpansion") {
+    const operation = part.operation;
+    if (operation && "word" in operation) {
+      return wordHasCommandSubstitution(operation.word);
+    }
+    if (operation && "replacement" in operation) {
+      return wordHasCommandSubstitution(operation.replacement);
+    }
+  }
+  return false;
 }
 
 export class Interpreter {
@@ -171,8 +211,10 @@ export class Interpreter {
       requireDefenseContext: options.requireDefenseContext ?? false,
       jsBootstrapCode: options.jsBootstrapCode,
       invokeTool: options.invokeTool,
+      rejectTimedPipelines: options.rejectTimedPipelines ?? false,
       hostSpawn: options.hostSpawn,
       hostResolveCommand: options.hostResolveCommand,
+      jobControl: options.jobControl,
     };
   }
 
@@ -284,6 +326,18 @@ export class Interpreter {
             env: mapToRecord(this.ctx.state.env),
           };
         }
+        if (error instanceof BuiltinFatalError) {
+          appendOutput(error.stdout, error.stderr);
+          exitCode = error.exitCode;
+          this.ctx.state.lastExitCode = exitCode;
+          this.ctx.state.env.set("?", String(exitCode));
+          return {
+            stdout,
+            stderr,
+            exitCode,
+            env: mapToRecord(this.ctx.state.env),
+          };
+        }
         // ExecutionLimitError must always propagate - these are safety limits
         if (error instanceof ExecutionLimitError) {
           throw error;
@@ -313,20 +367,16 @@ export class Interpreter {
           };
         }
         if (error instanceof BadSubstitutionError) {
-          appendOutput(error.stdout, error.stderr);
-          exitCode = 1;
-          this.ctx.state.lastExitCode = exitCode;
-          this.ctx.state.env.set("?", String(exitCode));
-          return {
-            stdout,
-            stderr,
-            exitCode,
-            env: mapToRecord(this.ctx.state.env),
-          };
+          error.prependOutput(stdout, stderr);
+          throw error;
         }
         // ArithmeticError in expansion (e.g., echo $((42x))) - the command fails
         // but the script continues execution. This matches bash behavior.
         if (error instanceof ArithmeticError) {
+          if (error.message.includes("substring expression < 0")) {
+            error.prependOutput(stdout, stderr);
+            throw error;
+          }
           appendOutput(error.stdout, error.stderr);
           exitCode = 1;
           this.ctx.state.lastExitCode = exitCode;
@@ -414,6 +464,13 @@ export class Interpreter {
       return OK;
     }
 
+    if (node.background && this.ctx.jobControl?.startBackground) {
+      const backgroundResult = await this.ctx.jobControl.startBackground(node);
+      if (backgroundResult) {
+        return backgroundResult;
+      }
+    }
+
     // Reset errexitSafe at the start of each statement
     // It will be set by inner compound command executions if needed
     this.ctx.state.errexitSafe = false;
@@ -483,6 +540,9 @@ export class Interpreter {
   }
 
   private async executePipeline(node: PipelineNode): Promise<ExecResult> {
+    if (node.timed && this.ctx.rejectTimedPipelines) {
+      throw new Error("Unsupported shell syntax: timed pipelines");
+    }
     return executePipelineHelper(this.ctx, node, (cmd, stdin) =>
       this.executeCommand(cmd, stdin),
     );
@@ -613,7 +673,16 @@ export class Interpreter {
       const stderrOutput =
         (this.ctx.state.expansionStderr || "") + xtraceAssignmentOutput;
       this.ctx.state.expansionStderr = "";
-      return result("", stderrOutput, this.ctx.state.lastExitCode);
+      const preservesCommandSubstitutionStatus = node.assignments.some(
+        (assignment) =>
+          wordHasCommandSubstitution(assignment.value) ||
+          assignment.array?.some((word) => wordHasCommandSubstitution(word)),
+      );
+      return result(
+        "",
+        stderrOutput,
+        preservesCommandSubstitutionStatus ? this.ctx.state.lastExitCode : 0,
+      );
     }
 
     // Mark prefix assignment variables as temporarily exported for this command
@@ -1064,19 +1133,51 @@ export class Interpreter {
       this.ctx.state.tempEnvBindings.push(new Map(tempAssignments));
     }
 
-    let cmdResult: ExecResult;
+    let cmdResult: ExecResult = OK;
     let controlFlowError: BreakError | ContinueError | null = null;
+    let preExpandedRedirectTargets: ExpandedRedirectTargets | undefined;
+    const previousCurrentRedirections = this.ctx.currentRedirections;
 
     try {
-      cmdResult = await this.runCommand(
-        commandName,
-        args,
-        quotedArgs,
-        stdin,
-        false,
-        false,
-        stdinSourceFd,
-      );
+      let shouldRunCommand = true;
+      if (node.redirections.length > 0) {
+        const expanded = await preExpandRedirectTargets(
+          this.ctx,
+          node.redirections,
+        );
+        if (expanded.error) {
+          cmdResult = failure(expanded.error);
+          shouldRunCommand = false;
+        } else {
+          preExpandedRedirectTargets = expanded.targets;
+          const validationError = await validateOutputRedirects(
+            this.ctx,
+            node.redirections,
+            preExpandedRedirectTargets,
+          );
+          if (validationError) {
+            cmdResult = validationError;
+            shouldRunCommand = false;
+          } else {
+            this.ctx.currentRedirections = buildHostSpawnRedirections(
+              node.redirections,
+              preExpandedRedirectTargets,
+            );
+          }
+        }
+      }
+
+      if (shouldRunCommand) {
+        cmdResult = await this.runCommand(
+          commandName,
+          args,
+          quotedArgs,
+          stdin,
+          false,
+          false,
+          stdinSourceFd,
+        );
+      }
     } catch (error) {
       // For break/continue, we still need to apply redirections before propagating
       // This handles cases like "break > file" where the file should be created
@@ -1086,6 +1187,8 @@ export class Interpreter {
       } else {
         throw error;
       }
+    } finally {
+      this.ctx.currentRedirections = previousCurrentRedirections;
     }
 
     // Prepend xtrace output and any assignment warnings to stderr
@@ -1097,7 +1200,12 @@ export class Interpreter {
       };
     }
 
-    cmdResult = await applyRedirections(this.ctx, cmdResult, node.redirections);
+    cmdResult = await applyRedirections(
+      this.ctx,
+      cmdResult,
+      node.redirections,
+      preExpandedRedirectTargets,
+    );
 
     // If we caught a break/continue error, re-throw it after applying redirections
     if (controlFlowError) {
@@ -1333,4 +1441,22 @@ export class Interpreter {
       return applyRedirections(this.ctx, bodyResult, node.redirections);
     }
   }
+}
+
+function buildHostSpawnRedirections(
+  redirections: RedirectionNode[],
+  targets: ExpandedRedirectTargets,
+): HostSpawnRedirection[] {
+  const result: HostSpawnRedirection[] = [];
+  for (let i = 0; i < redirections.length; i++) {
+    const redirection = redirections[i];
+    const target = targets.get(i);
+    if (target === undefined) continue;
+    result.push({
+      fd: redirection.fd,
+      operator: redirection.operator,
+      target,
+    });
+  }
+  return result;
 }
