@@ -449,4 +449,28 @@ export interface InterpreterContext {
    * routes calls through this callback.
    */
   invokeTool?: (path: string, argsJson: string) => Promise<string>;
+  /**
+   * External command execution hook. When present, commands that are not
+   * shell builtins, registered commands, or shell functions are dispatched
+   * to this callback instead of being resolved via IFileSystem + PATH.
+   *
+   * This lets embedders drive real host processes (e.g. spawn `cat`, `git`,
+   * `npm` on the real system) without going through the in-memory fs.
+   * The callback receives the exported environment and cwd so it can spawn
+   * in the correct working directory with the right env.
+   */
+  hostSpawn?: (
+    command: string,
+    args: string[],
+    options: { cwd: string; env: Record<string, string>; stdin: string },
+  ) => Promise<ExecResult>;
+  /**
+   * Command resolution hook for `command -v` / `type`. When present, PATH
+   * lookup for external commands goes through this callback instead of
+   * IFileSystem. Returns the kind and (for file commands) the resolved path.
+   */
+  hostResolveCommand?: (
+    name: string,
+    env: Record<string, string>,
+  ) => Promise<{ kind: "builtin" | "registered" | "function" | "file"; value: string } | null>;
 }

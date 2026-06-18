@@ -37,6 +37,10 @@
       "types": "./src/interpreter/helpers/ifs.ts",
       "import": "./src/interpreter/helpers/ifs.ts"
     },
+    "./interpreter": {
+      "types": "./src/interpreter/index.ts",
+      "import": "./src/interpreter/index.ts"
+    },
     "./parser": {
       "types": "./src/parser/parser.ts",
       "import": "./src/parser/parser.ts"

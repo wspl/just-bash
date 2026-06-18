@@ -1,0 +1,138 @@
+import { describe, expect, it } from "vitest";
+import { Bash } from "../Bash.js";
+import { Interpreter } from "./interpreter.js";
+import { parse } from "../parser/parser.js";
+import { resolveLimits } from "../limits.js";
+import { InMemoryFs } from "../fs/in-memory-fs/in-memory-fs.js";
+import { mapToRecord } from "../helpers/env.js";
+import type { InterpreterState } from "./types.js";
+import type { Command } from "../types.js";
+
+describe("hostSpawn hook", () => {
+  it("dispatches external commands to hostSpawn when present", async () => {
+    const bash = new Bash();
+    const calls: Array<{ command: string; args: string[] }> = [];
+
+    // Override Bash.exec to inject hostSpawn into the interpreter context.
+    // We do this by constructing an Interpreter directly with a hostSpawn hook.
+    const state: InterpreterState = {
+      env: new Map([
+        ["HOME", "/home/user"],
+        ["PATH", "/usr/bin:/bin"],
+        ["IFS", " \t\n"],
+        ["PWD", "/home/user"],
+        ["SHELLOPTS", ""],
+        ["BASHOPTS", ""],
+      ]),
+      cwd: "/home/user",
+      previousDir: "/home/user",
+      functions: new Map(),
+      localScopes: [],
+      callDepth: 0,
+      sourceDepth: 0,
+      commandCount: 0,
+      lastExitCode: 0,
+      lastArg: "",
+      startTime: Date.now(),
+      lastBackgroundPid: 0,
+      virtualPid: 1,
+      virtualPpid: 0,
+      virtualUid: 1000,
+      virtualGid: 1000,
+      bashPid: 1,
+      nextVirtualPid: 2,
+      currentLine: 1,
+      options: {
+        errexit: false,
+        pipefail: false,
+        nounset: false,
+        xtrace: false,
+        verbose: false,
+        posix: false,
+        allexport: false,
+        noclobber: false,
+        noglob: false,
+        noexec: false,
+        vi: false,
+        emacs: false,
+      },
+      shoptOptions: {
+        extglob: false,
+        dotglob: false,
+        nullglob: false,
+        failglob: false,
+        globstar: false,
+        globskipdots: true,
+        nocaseglob: false,
+        nocasematch: false,
+        expand_aliases: false,
+        lastpipe: false,
+        xpg_echo: false,
+      },
+      inCondition: false,
+      loopDepth: 0,
+      exportedVars: new Set(["HOME", "PATH", "PWD"]),
+      readonlyVars: new Set(["SHELLOPTS", "BASHOPTS"]),
+      hashTable: new Map(),
+    };
+
+    const commands = new Map<string, Command>();
+    const fs = new InMemoryFs();
+    const limits = resolveLimits({});
+
+    const interpreter = new Interpreter(
+      {
+        fs,
+        commands,
+        limits,
+        exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+        hostSpawn: async (command, args) => {
+          calls.push({ command, args });
+          if (command === "git" && args[0] === "status") {
+            return { stdout: "clean\n", stderr: "", exitCode: 0 };
+          }
+          return { stdout: "", stderr: `${command}: not found\n`, exitCode: 127 };
+        },
+      },
+      state,
+    );
+
+    const ast = parse("git status --short");
+    const result = await interpreter.executeScript(ast);
+
+    expect(calls).toEqual([{ command: "git", args: ["status", "--short"] }]);
+    expect(result.stdout).toBe("clean\n");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("does not invoke hostSpawn for shell builtins", async () => {
+    const bash = new Bash();
+    const calls: Array<{ command: string; args: string[] }> = [];
+
+    // Use a minimal state via Bash internals
+    const state = (bash as unknown as { state: InterpreterState }).state;
+    const commands = (bash as unknown as { commands: Map<string, Command> }).commands;
+    const fs = (bash as unknown as { fs: import("../fs/interface.js").IFileSystem }).fs;
+    const limits = resolveLimits({});
+
+    const interpreter = new Interpreter(
+      {
+        fs,
+        commands,
+        limits,
+        exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+        hostSpawn: async (command, args) => {
+          calls.push({ command, args });
+          return { stdout: "", stderr: "", exitCode: 127 };
+        },
+      },
+      state,
+    );
+
+    const ast = parse("export FOO=bar && echo $FOO");
+    const result = await interpreter.executeScript(ast);
+
+    expect(calls).toEqual([]);
+    expect(result.stdout).toBe("bar\n");
+  });
+});

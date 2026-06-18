@@ -365,6 +365,21 @@ export async function executeExternalCommand(
 ): Promise<ExecResult> {
   const { ctx, buildExportedEnv, executeUserScript } = dispatchCtx;
 
+  // Host spawn hook: when present, dispatch external commands to the host
+  // instead of resolving via IFileSystem + PATH. This lets embedders drive
+  // real system processes (cat, git, npm, ...) on a real workspace.
+  // Registered commands (in ctx.commands) still go through the normal path
+  // so they are dispatched to their TS implementations.
+  if (ctx.hostSpawn && !ctx.commands.has(commandName)) {
+    const exportedEnv = buildExportedEnv();
+    const effectiveStdin = stdin || ctx.state.groupStdin || "";
+    return ctx.hostSpawn(commandName, args, {
+      cwd: ctx.state.cwd,
+      env: exportedEnv,
+      stdin: effectiveStdin,
+    });
+  }
+
   // External commands - resolve via PATH
   // For command -p, use default PATH /usr/bin:/bin instead of $PATH
   const defaultPath = "/usr/bin:/bin";

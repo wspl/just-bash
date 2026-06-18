@@ -141,6 +141,14 @@ export interface InterpreterOptions {
   jsBootstrapCode?: string;
   /** Tool invoker hook for js-exec's `tools` proxy */
   invokeTool?: (path: string, argsJson: string) => Promise<string>;
+  /**
+   * External command execution hook. When present, commands that are not
+   * shell builtins, registered commands, or shell functions are dispatched
+   * here instead of via IFileSystem + PATH.
+   */
+  hostSpawn?: InterpreterContext["hostSpawn"];
+  /** Command resolution hook for `command -v` / `type`. */
+  hostResolveCommand?: InterpreterContext["hostResolveCommand"];
 }
 
 export class Interpreter {
@@ -163,6 +171,8 @@ export class Interpreter {
       requireDefenseContext: options.requireDefenseContext ?? false,
       jsBootstrapCode: options.jsBootstrapCode,
       invokeTool: options.invokeTool,
+      hostSpawn: options.hostSpawn,
+      hostResolveCommand: options.hostResolveCommand,
     };
   }
 
