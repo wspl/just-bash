@@ -45,7 +45,7 @@ describe("secureFetch DNS pinning", () => {
       // though no real DNS server resolves "attacker.example".
       seen.push(await lookupAll("attacker.example"));
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const secureFetch = createSecureFetch({
       dangerouslyAllowFullInternetAccess: true,
@@ -73,7 +73,7 @@ describe("secureFetch DNS pinning", () => {
         lookupErr = e as NodeJS.ErrnoException;
       }
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const secureFetch = createSecureFetch({
       dangerouslyAllowFullInternetAccess: true,
@@ -107,7 +107,7 @@ describe("secureFetch DNS pinning", () => {
         });
       }
       return new Response("ok", { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const secureFetch = createSecureFetch({
       allowedUrlPrefixes: ["https://first.example", "https://second.example"],

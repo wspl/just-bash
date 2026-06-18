@@ -66,10 +66,14 @@ const mockResponses: Record<
 
 // Store original fetch
 export const originalFetch: typeof fetch = global.fetch;
+type MockFetch = (
+  url: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
 
 // Mock fetch implementation
-export function createMockFetch(): ReturnType<typeof vi.fn<typeof fetch>> {
-  return vi.fn<typeof fetch>(
+export function createMockFetch(): ReturnType<typeof vi.fn<MockFetch>> {
+  return vi.fn<MockFetch>(
     async (url: string | URL | Request, _init?: RequestInit) => {
       const urlString = typeof url === "string" ? url : url.toString();
 

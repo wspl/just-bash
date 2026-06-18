@@ -40,7 +40,7 @@ describe("DNS rebinding SSRF protection", () => {
 
   beforeAll(() => {
     mockFetch = createMockFetch();
-    global.fetch = mockFetch as typeof fetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
   });
 
   afterAll(() => {

@@ -10,6 +10,11 @@ import { createSecureFetch } from "../fetch.js";
 import type { AllowedUrlEntry } from "../types.js";
 import { originalFetch } from "./shared.js";
 
+type MockFetch = (
+  url: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
+
 /** Extract headers from RequestInit into a plain record */
 function extractHeaders(init?: RequestInit): Record<string, string> {
   const result: Record<string, string> = Object.create(null);
@@ -31,7 +36,7 @@ function extractHeaders(init?: RequestInit): Record<string, string> {
 /** Minimal mock fetch that captures headers and returns 200 */
 function createCapturingMock() {
   const calls: { url: string; headers: Record<string, string> }[] = [];
-  const mockFn = vi.fn<typeof fetch>(
+  const mockFn = vi.fn<MockFetch>(
     async (url: string | URL | Request, init?: RequestInit) => {
       const urlString = typeof url === "string" ? url : url.toString();
       calls.push({ url: urlString, headers: extractHeaders(init) });
@@ -44,7 +49,7 @@ function createCapturingMock() {
 /** Mock that returns a redirect for a specific URL */
 function createRedirectMock(redirectFrom: string, redirectTo: string) {
   const calls: { url: string; headers: Record<string, string> }[] = [];
-  const mockFn = vi.fn<typeof fetch>(
+  const mockFn = vi.fn<MockFetch>(
     async (url: string | URL | Request, init?: RequestInit) => {
       const urlString = typeof url === "string" ? url : url.toString();
       calls.push({ url: urlString, headers: extractHeaders(init) });
@@ -65,7 +70,7 @@ describe("firewall header transforms", () => {
     // Prevent real network calls
     global.fetch = vi.fn(() => {
       throw new Error("unexpected real fetch");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
   });
 
   afterAll(() => {
@@ -75,7 +80,7 @@ describe("firewall header transforms", () => {
 
   it("injects firewall headers for matching URL prefix", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -93,7 +98,7 @@ describe("firewall header transforms", () => {
 
   it("preserves non-conflicting user headers", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -115,7 +120,7 @@ describe("firewall header transforms", () => {
 
   it("firewall headers override user headers with same name (security)", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -136,7 +141,7 @@ describe("firewall header transforms", () => {
 
   it("prevents case-insensitive header bypass (security)", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -158,7 +163,7 @@ describe("firewall header transforms", () => {
 
   it("merges multiple transforms in order", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -182,7 +187,7 @@ describe("firewall header transforms", () => {
 
   it("no injection for non-matching hosts", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       "https://other-api.com",
@@ -209,7 +214,7 @@ describe("firewall header transforms", () => {
       "https://plain.com/start",
       "https://secret-api.com/target",
     );
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       "https://plain.com",
@@ -236,7 +241,7 @@ describe("firewall header transforms", () => {
       "https://secret-api.com/start",
       "https://plain.com/target",
     );
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       "https://plain.com",
@@ -260,7 +265,7 @@ describe("firewall header transforms", () => {
 
   it("mixed string and object entries work together", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       "https://public-api.com",
@@ -294,7 +299,7 @@ describe("firewall header transforms", () => {
 
   it("object entry without transforms works as plain allow-list entry", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [{ url: "https://api.example.com" }];
 
@@ -308,7 +313,7 @@ describe("firewall header transforms", () => {
 
   it("transforms match by URL prefix, not just hostname", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -333,7 +338,7 @@ describe("firewall header transforms", () => {
 
   it("different path prefixes on same host get different transforms", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -358,7 +363,7 @@ describe("firewall header transforms", () => {
 
   it("origin-only transform applies to all paths on that origin", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -379,7 +384,7 @@ describe("firewall header transforms", () => {
 
   it("later transform overrides earlier for same header name", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -401,7 +406,7 @@ describe("firewall header transforms", () => {
 
   it("firewall cookies override user cookies", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -422,7 +427,7 @@ describe("firewall header transforms", () => {
 
   it("user cookies survive when transform sets unrelated header", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -444,7 +449,7 @@ describe("firewall header transforms", () => {
 
   it("multi-value user headers survive unrelated transform", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     const entries: AllowedUrlEntry[] = [
       {
@@ -471,7 +476,7 @@ describe("firewall header transforms", () => {
 
   it("overlapping prefixes merge headers from all matching entries", async () => {
     const { mockFn, calls } = createCapturingMock();
-    global.fetch = mockFn;
+    global.fetch = mockFn as unknown as typeof fetch;
 
     // Origin-wide entry applies to all paths; path-specific adds more headers.
     // A request to /v1/chat matches both — headers from both entries accumulate.

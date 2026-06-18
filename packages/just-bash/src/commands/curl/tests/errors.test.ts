@@ -18,7 +18,7 @@ let mockFetch: ReturnType<typeof vi.fn>;
 
 beforeAll(() => {
   mockFetch = vi.fn();
-  global.fetch = mockFetch as typeof fetch;
+  global.fetch = mockFetch as unknown as typeof fetch;
 });
 
 afterAll(() => {

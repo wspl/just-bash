@@ -33,7 +33,7 @@ describe("DNS rebinding integration (real DNS)", () => {
 
   beforeAll(() => {
     mockFetch = createMockFetch();
-    global.fetch = mockFetch as typeof fetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
   });
 
   afterAll(() => {

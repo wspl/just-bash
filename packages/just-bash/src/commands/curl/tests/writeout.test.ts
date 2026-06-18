@@ -27,7 +27,7 @@ const mockFetch = vi.fn(async (_url: string, _options?: RequestInit) => {
 });
 
 beforeAll(() => {
-  global.fetch = mockFetch as typeof fetch;
+  global.fetch = mockFetch as unknown as typeof fetch;
 });
 
 afterAll(() => {

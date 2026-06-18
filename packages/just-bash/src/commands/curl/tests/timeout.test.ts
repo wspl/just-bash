@@ -25,7 +25,7 @@ const mockFetch = vi.fn(async (_url: string, options?: RequestInit) => {
 });
 
 beforeAll(() => {
-  global.fetch = mockFetch as typeof fetch;
+  global.fetch = mockFetch as unknown as typeof fetch;
 });
 
 afterAll(() => {
@@ -113,7 +113,7 @@ describe("curl timeouts", () => {
           return new Response('{"ok":true}', { status: 200 });
         },
       );
-      global.fetch = abortingFetch as typeof fetch;
+      global.fetch = abortingFetch as unknown as typeof fetch;
 
       const env = new Bash({
         network: { allowedUrlPrefixes: ["https://api.example.com"] },
@@ -124,7 +124,7 @@ describe("curl timeouts", () => {
       expect(result.stderr).toContain("aborted");
 
       // Restore mock
-      global.fetch = mockFetch as typeof fetch;
+      global.fetch = mockFetch as unknown as typeof fetch;
     });
   });
 });

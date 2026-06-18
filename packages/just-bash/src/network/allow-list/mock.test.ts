@@ -12,7 +12,7 @@ describe("allow-list mock verification", () => {
 
   beforeAll(() => {
     mockFetch = createMockFetch();
-    global.fetch = mockFetch as typeof fetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
   });
 
   afterAll(() => {

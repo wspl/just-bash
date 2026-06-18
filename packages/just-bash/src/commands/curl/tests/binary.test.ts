@@ -37,7 +37,7 @@ describe("curl binary data", () => {
           status: 200,
           headers: { "content-type": "application/octet-stream" },
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const env = new Bash({
         network: { allowedUrlPrefixes: ["https://api.example.com"] },
@@ -55,7 +55,7 @@ describe("curl binary data", () => {
           status: 200,
           headers: { "content-type": "application/octet-stream" },
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const env = new Bash({
         network: { allowedUrlPrefixes: ["https://api.example.com"] },
@@ -73,7 +73,7 @@ describe("curl binary data", () => {
           status: 200,
           headers: { "content-type": "application/octet-stream" },
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const env = new Bash({
         network: { allowedUrlPrefixes: ["https://api.example.com"] },
@@ -90,7 +90,7 @@ describe("curl binary data", () => {
           status: 200,
           headers: { "content-type": "image/jpeg" },
         });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const env = new Bash({
         network: { allowedUrlPrefixes: ["https://api.example.com"] },
@@ -106,7 +106,7 @@ describe("curl binary data", () => {
       global.fetch = vi.fn(async (url: string, options?: RequestInit) => {
         lastRequest = { url, options: options ?? {} };
         return new Response('{"ok":true}', { status: 200 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const env = new Bash({
         network: {
@@ -126,7 +126,7 @@ describe("curl binary data", () => {
       global.fetch = vi.fn(async (url: string, options?: RequestInit) => {
         lastRequest = { url, options: options ?? {} };
         return new Response('{"ok":true}', { status: 200 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const binaryContent = "binary\0file\0content";
       const env = new Bash({
@@ -145,7 +145,7 @@ describe("curl binary data", () => {
       global.fetch = vi.fn(async (url: string, options?: RequestInit) => {
         lastRequest = { url, options: options ?? {} };
         return new Response('{"ok":true}', { status: 200 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const binaryContent = "file\0with\0binary";
       const env = new Bash({
@@ -169,7 +169,7 @@ describe("curl binary data", () => {
       global.fetch = vi.fn(async (url: string, options?: RequestInit) => {
         lastRequest = { url, options: options ?? {} };
         return new Response('{"ok":true}', { status: 200 });
-      }) as typeof fetch;
+      }) as unknown as typeof fetch;
 
       const env = new Bash({
         files: {

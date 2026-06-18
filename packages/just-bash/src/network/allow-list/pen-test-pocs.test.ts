@@ -2,9 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { Bash } from "../../Bash.js";
 
 const originalFetch = global.fetch;
+type MockFetch = (
+  url: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
 
 function installEchoFetch() {
-  const mockFetch = vi.fn<typeof fetch>(async (url: string | URL | Request) => {
+  const mockFetch = vi.fn<MockFetch>(async (url: string | URL | Request) => {
     const urlString = typeof url === "string" ? url : url.toString();
     return new Response(`FETCH:${urlString}`, {
       status: 200,
@@ -12,7 +16,7 @@ function installEchoFetch() {
     });
   });
 
-  global.fetch = mockFetch as typeof fetch;
+  global.fetch = mockFetch as unknown as typeof fetch;
   return mockFetch;
 }
 
