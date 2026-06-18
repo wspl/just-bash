@@ -755,6 +755,12 @@ export class Lexer {
       return false;
     }
 
+    // `(( i -= 2 ))` and `(( i /= 2 ))` are arithmetic, not nested
+    // subshell syntax with command-like arguments after whitespace.
+    if ("+-*/%&|^".includes(nextChar) && input[afterWord + 1] === "=") {
+      return false;
+    }
+
     // If followed by arithmetic operators without space, likely arithmetic
     if (
       wordEnd === afterWord &&

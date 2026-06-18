@@ -28,6 +28,18 @@
     "./browser": {
       "types": "./dist/browser.d.ts",
       "import": "./dist/bundle/browser.js"
+    },
+    "./ast/types": {
+      "types": "./src/ast/types.ts",
+      "import": "./src/ast/types.ts"
+    },
+    "./interpreter/helpers/ifs": {
+      "types": "./src/interpreter/helpers/ifs.ts",
+      "import": "./src/interpreter/helpers/ifs.ts"
+    },
+    "./parser": {
+      "types": "./src/parser/parser.ts",
+      "import": "./src/parser/parser.ts"
     }
   },
   "files": [
