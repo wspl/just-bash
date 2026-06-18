@@ -135,4 +135,115 @@ describe("hostSpawn hook", () => {
     expect(calls).toEqual([]);
     expect(result.stdout).toBe("bar\n");
   });
+
+  it("dispatches registered commands directly when hostSpawn is present", async () => {
+    // Scenario: embedder provides hostSpawn (e.g. demi's HostBackedFileSystem
+    // has no /bin/editor stub) AND registers a TS-implemented command named
+    // "editor". The registered command must be dispatched to its TS impl,
+    // not fall through to PATH resolution (which would 127 without a stub)
+    // and not be sent to hostSpawn.
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const editorCalls: Array<{ args: string[]; cwd: string }> = [];
+
+    const state: InterpreterState = {
+      env: new Map([
+        ["HOME", "/home/user"],
+        ["PATH", "/usr/bin:/bin"],
+        ["IFS", " \t\n"],
+        ["PWD", "/home/user"],
+        ["SHELLOPTS", ""],
+        ["BASHOPTS", ""],
+      ]),
+      cwd: "/home/user",
+      previousDir: "/home/user",
+      functions: new Map(),
+      localScopes: [],
+      callDepth: 0,
+      sourceDepth: 0,
+      commandCount: 0,
+      lastExitCode: 0,
+      lastArg: "",
+      startTime: Date.now(),
+      lastBackgroundPid: 0,
+      virtualPid: 1,
+      virtualPpid: 0,
+      virtualUid: 1000,
+      virtualGid: 1000,
+      bashPid: 1,
+      nextVirtualPid: 2,
+      currentLine: 1,
+      options: {
+        errexit: false,
+        pipefail: false,
+        nounset: false,
+        xtrace: false,
+        verbose: false,
+        posix: false,
+        allexport: false,
+        noclobber: false,
+        noglob: false,
+        noexec: false,
+        vi: false,
+        emacs: false,
+      },
+      shoptOptions: {
+        extglob: false,
+        dotglob: false,
+        nullglob: false,
+        failglob: false,
+        globstar: false,
+        globskipdots: true,
+        nocaseglob: false,
+        nocasematch: false,
+        expand_aliases: false,
+        lastpipe: false,
+        xpg_echo: false,
+      },
+      inCondition: false,
+      loopDepth: 0,
+      exportedVars: new Set(["HOME", "PATH", "PWD"]),
+      readonlyVars: new Set(["SHELLOPTS", "BASHOPTS"]),
+      hashTable: new Map(),
+    };
+
+    const commands = new Map<string, Command>();
+    const fs = new InMemoryFs();
+    // Reproduce the demi HostBackedFileSystem gap: /usr/bin exists (so
+    // resolveCommand's registry-fallback branch is skipped), but there is
+    // no /usr/bin/editor stub (so PATH lookup for "editor" fails). Without
+    // the direct dispatch fix, registered "editor" would 127 here.
+    await fs.mkdir("/usr/bin", { recursive: true });
+    const limits = resolveLimits({});
+
+    const editorCommand: Command = {
+      name: "editor",
+      execute: async (args, ctx) => {
+        editorCalls.push({ args, cwd: ctx.cwd });
+        return { stdout: `editor ran with ${args.join(" ")}\n`, stderr: "", exitCode: 0 };
+      },
+    };
+    commands.set("editor", editorCommand);
+
+    const interpreter = new Interpreter(
+      {
+        fs,
+        commands,
+        limits,
+        exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+        hostSpawn: async (command, args) => {
+          calls.push({ command, args });
+          return { stdout: "", stderr: `${command}: not found\n`, exitCode: 127 };
+        },
+      },
+      state,
+    );
+
+    const ast = parse("editor foo bar");
+    const result = await interpreter.executeScript(ast);
+
+    expect(calls).toEqual([]); // hostSpawn must not be called for registered commands
+    expect(editorCalls).toEqual([{ args: ["foo", "bar"], cwd: "/home/user" }]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("editor ran with foo bar\n");
+  });
 });

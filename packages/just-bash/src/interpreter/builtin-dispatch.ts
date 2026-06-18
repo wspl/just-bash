@@ -368,9 +368,62 @@ export async function executeExternalCommand(
   // Host spawn hook: when present, dispatch external commands to the host
   // instead of resolving via IFileSystem + PATH. This lets embedders drive
   // real system processes (cat, git, npm, ...) on a real workspace.
-  // Registered commands (in ctx.commands) still go through the normal path
-  // so they are dispatched to their TS implementations.
-  if (ctx.hostSpawn && !ctx.commands.has(commandName)) {
+  //
+  // Registered commands (in ctx.commands) are dispatched directly to their
+  // TS implementations BEFORE PATH resolution. This matters when an embedder
+  // provides hostSpawn with a real-host-backed filesystem (e.g. demi's
+  // HostBackedFileSystem): /usr/bin may exist but contain no stub for the
+  // registered command name, so resolveCommand's PATH lookup would 127 even
+  // though a registered handler is available. Skipping PATH for registered
+  // commands keeps dispatch deterministic and matches §3.1 guard 8: shell
+  // functions must not shadow registered commands, and registered commands
+  // must always reach their handler.
+  if (ctx.hostSpawn) {
+    const registered = ctx.commands.get(commandName);
+    if (registered) {
+      const exportedEnv = buildExportedEnv();
+      const effectiveStdin = stdin || ctx.state.groupStdin || "";
+      const cmdCtx: CommandContext = {
+        fs: ctx.fs,
+        cwd: ctx.state.cwd,
+        env: ctx.state.env,
+        exportedEnv,
+        stdin: unsafeBytesFromLatin1(effectiveStdin),
+        limits: ctx.limits,
+        exec: ctx.execFn,
+        fetch: ctx.fetch,
+        getRegisteredCommands: () => Array.from(ctx.commands.keys()),
+        sleep: ctx.sleep,
+        trace: ctx.trace,
+        fileDescriptors: ctx.state.fileDescriptors,
+        xpgEcho: ctx.state.shoptOptions.xpg_echo,
+        coverage: ctx.coverage,
+        signal: ctx.state.signal,
+        requireDefenseContext: ctx.requireDefenseContext,
+        jsBootstrapCode: ctx.jsBootstrapCode,
+        invokeTool: ctx.invokeTool,
+      };
+      const guardedCmdCtx = createDefenseAwareCommandContext(cmdCtx, commandName);
+      try {
+        const runRegistered = (): Promise<ExecResult> =>
+          awaitWithDefenseContext(
+            ctx.requireDefenseContext,
+            "command",
+            `${commandName} execution`,
+            () => registered.execute(args, guardedCmdCtx),
+          );
+        if (registered.trusted) {
+          return await DefenseInDepthBox.runTrustedAsync(() => runRegistered());
+        }
+        return await runRegistered();
+      } catch (error) {
+        if (error instanceof ExecutionLimitError) throw error;
+        if (error instanceof SecurityViolationError) throw error;
+        return failure(
+          `${commandName}: ${sanitizeErrorMessage(getErrorMessage(error))}\n`,
+        );
+      }
+    }
     const exportedEnv = buildExportedEnv();
     const effectiveStdin = stdin || ctx.state.groupStdin || "";
     return ctx.hostSpawn(commandName, args, {

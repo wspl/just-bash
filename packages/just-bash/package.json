@@ -44,6 +44,14 @@
     "./parser": {
       "types": "./src/parser/parser.ts",
       "import": "./src/parser/parser.ts"
+    },
+    "./fs/interface": {
+      "types": "./src/fs/interface.ts",
+      "import": "./src/fs/interface.ts"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "import": "./src/types.ts"
     }
   },
   "files": [
