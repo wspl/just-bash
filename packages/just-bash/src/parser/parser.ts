@@ -493,6 +493,9 @@ export class Parser {
       const op = this.advance();
       operators.push(op.type === TokenType.AND_AND ? "&&" : "||");
       this.skipNewlines();
+      if (!this.isCommandStart()) {
+        this.errorExpectedCommand();
+      }
       const nextPipeline = this.parsePipeline();
       pipelines.push(nextPipeline);
     }
@@ -565,6 +568,9 @@ export class Parser {
       // Track whether this pipe is |& (pipes stderr too)
       pipeStderr.push(pipeToken.type === TokenType.PIPE_AMP);
 
+      if (!this.isCommandStart()) {
+        this.errorExpectedCommand();
+      }
       const nextCmd = this.parseCommand();
       commands.push(nextCmd);
     }
@@ -710,6 +716,13 @@ export class Parser {
       [AST.statement([AST.pipeline([innerSubshell], false, false, false)])],
       redirections,
     );
+  }
+
+  private errorExpectedCommand(): never {
+    if (this.check(TokenType.EOF)) {
+      this.error("syntax error near unexpected end of input");
+    }
+    this.error(`syntax error near unexpected token \`${this.current().value}'`);
   }
 
   // ===========================================================================

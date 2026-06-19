@@ -130,16 +130,18 @@ describe("Bash Syntax - Parse Errors", () => {
   describe("quote errors", () => {
     it("should handle unclosed double quote gracefully", async () => {
       const env = new Bash();
-      // This might be parsed differently - test actual behavior
       const result = await env.exec('echo "unclosed');
-      // The parser should handle this somehow
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("unexpected EOF");
+      expect(result.stderr).toContain("matching `\"'");
     });
 
     it("should handle unclosed single quote gracefully", async () => {
       const env = new Bash();
       const result = await env.exec("echo 'unclosed");
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("unexpected EOF");
+      expect(result.stderr).toContain("matching `''");
     });
   });
 
@@ -156,8 +158,9 @@ describe("Bash Syntax - Parse Errors", () => {
     it("should error on redirect without target", async () => {
       const env = new Bash();
       const result = await env.exec("echo test >");
-      // Parser should handle missing target
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("syntax error");
+      expect(result.stderr).toContain("Expected redirection target");
     });
   });
 
@@ -197,26 +200,33 @@ describe("Bash Syntax - Parse Errors", () => {
     it("should handle empty command before pipe", async () => {
       const env = new Bash();
       const result = await env.exec("| cat");
-      // Parser should handle this gracefully
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("syntax error");
+      expect(result.stderr).toContain("unexpected token `|'");
     });
 
     it("should handle empty command after pipe", async () => {
       const env = new Bash();
       const result = await env.exec("echo test |");
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("syntax error");
+      expect(result.stderr).toContain("unexpected end of input");
     });
 
     it("should handle && with no second command", async () => {
       const env = new Bash();
       const result = await env.exec("true &&");
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("syntax error");
+      expect(result.stderr).toContain("unexpected end of input");
     });
 
     it("should handle || with no second command", async () => {
       const env = new Bash();
       const result = await env.exec("false ||");
-      expect(result).toBeDefined();
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("syntax error");
+      expect(result.stderr).toContain("unexpected end of input");
     });
   });
 });
