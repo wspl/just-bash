@@ -297,23 +297,25 @@ export function evalObjectBuiltin(
         if (item.length !== 2) continue;
         const [path, val] = item;
         if (!Array.isArray(path)) continue;
+        const pathParts = path as (string | number)[];
 
         // Set value at path, creating structure as needed
-        if (path.length === 0) {
+        if (pathParts.length === 0) {
           result = val;
           continue;
         }
 
         // Auto-create root structure based on first path element
         if (result === null) {
-          result = typeof path[0] === "number" ? [] : Object.create(null);
+          result =
+            typeof pathParts[0] === "number" ? [] : Object.create(null);
         }
 
         // Navigate to parent and set value
         let current: QueryValue = result;
-        for (let i = 0; i < path.length - 1; i++) {
-          const key = path[i];
-          const nextKey = path[i + 1];
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          const key = pathParts[i];
+          const nextKey = pathParts[i + 1];
           if (Array.isArray(current) && typeof key === "number") {
             // Extend array if needed
             while (current.length <= key) {
@@ -343,7 +345,7 @@ export function evalObjectBuiltin(
         }
 
         // Set the final value
-        const lastKey = path[path.length - 1];
+        const lastKey = pathParts[pathParts.length - 1];
         if (Array.isArray(current) && typeof lastKey === "number") {
           while (current.length <= lastKey) {
             current.push(null);

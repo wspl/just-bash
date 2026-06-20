@@ -45,6 +45,10 @@
       "types": "./src/interpreter/errors.ts",
       "import": "./src/interpreter/errors.ts"
     },
+    "./commands": {
+      "types": "./src/commands/index.ts",
+      "import": "./src/commands/index.ts"
+    },
     "./parser": {
       "types": "./src/parser/parser.ts",
       "import": "./src/parser/parser.ts"
