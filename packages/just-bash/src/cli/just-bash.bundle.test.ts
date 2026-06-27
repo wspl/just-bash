@@ -203,7 +203,7 @@ describe("just-bash CJS bundle", () => {
 });
 
 // Regression test for https://github.com/vercel-labs/just-bash/issues/211.
-// The ESM Node bundle (what consumers import via `import { Bash } from "just-bash"`)
+// The ESM Node bundle (what consumers import via `import { Bash } from "@demicodes/just-bash"`)
 // has its own dynamic-require shim — file-type → debug → supports-color does
 // runtime require("tty")/require("os") that the shim throws for unless the
 // build banner provides createRequire.

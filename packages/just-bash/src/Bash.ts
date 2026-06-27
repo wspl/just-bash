@@ -174,7 +174,7 @@ export interface BashOptions {
    *
    * @example
    * ```ts
-   * import { defineCommand } from "just-bash";
+   * import { defineCommand } from "@demicodes/just-bash";
    *
    * const hello = defineCommand("hello", async (args) => ({
    *   stdout: `Hello, ${args[0] || "world"}!\n`,

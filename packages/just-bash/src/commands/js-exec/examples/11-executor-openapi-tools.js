@@ -11,7 +11,7 @@
 // @ts-check — this is a JS file with JSDoc types for illustration
 
 import { createExecutor } from "@just-bash/executor";
-import { Bash } from "just-bash";
+import { Bash } from "@demicodes/just-bash";
 
 const executor = await createExecutor({
   // Inline tools work alongside SDK-discovered tools

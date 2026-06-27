@@ -10,7 +10,7 @@
  *
  * Usage:
  * ```typescript
- * import { Bash } from 'just-bash';
+ * import { Bash } from '@demicodes/just-bash';
  *
  * // Enable defense-in-depth (recommended for production)
  * const bash = new Bash({

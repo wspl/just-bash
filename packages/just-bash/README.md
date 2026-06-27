@@ -13,7 +13,7 @@ npm install just-bash
 ```
 
 ```typescript
-import { Bash } from "just-bash";
+import { Bash } from "@demicodes/just-bash";
 
 const bash = new Bash();
 await bash.exec('echo "Hello" > greeting.txt');
@@ -29,7 +29,7 @@ Each `exec()` call gets its own isolated shell state — environment variables, 
 Extend just-bash with your own TypeScript commands using `defineCommand`:
 
 ```typescript
-import { Bash, decodeBytesToUtf8, defineCommand } from "just-bash";
+import { Bash, decodeBytesToUtf8, defineCommand } from "@demicodes/just-bash";
 
 const hello = defineCommand("hello", async (args, ctx) => {
   const name = args[0] || "world";
@@ -171,7 +171,7 @@ Four filesystem implementations:
 **InMemoryFs** (default) - Pure in-memory filesystem, no disk access:
 
 ```typescript
-import { Bash } from "just-bash";
+import { Bash } from "@demicodes/just-bash";
 
 const env = new Bash({
   files: {
@@ -186,8 +186,8 @@ const env = new Bash({
 **OverlayFs** - Copy-on-write over a real directory. Reads come from disk, writes stay in memory:
 
 ```typescript
-import { Bash } from "just-bash";
-import { OverlayFs } from "just-bash/fs/overlay-fs";
+import { Bash } from "@demicodes/just-bash";
+import { OverlayFs } from "@demicodes/just-bash/fs/overlay-fs";
 
 const overlay = new OverlayFs({ root: "/path/to/project" });
 const env = new Bash({ fs: overlay, cwd: overlay.getMountPoint() });
@@ -199,8 +199,8 @@ await env.exec('echo "modified" > package.json'); // stays in memory
 **ReadWriteFs** - Direct read-write access to a real directory. Use this if you want the agent to be able to write to your disk:
 
 ```typescript
-import { Bash } from "just-bash";
-import { ReadWriteFs } from "just-bash/fs/read-write-fs";
+import { Bash } from "@demicodes/just-bash";
+import { ReadWriteFs } from "@demicodes/just-bash/fs/read-write-fs";
 
 const rwfs = new ReadWriteFs({ root: "/path/to/sandbox" });
 const env = new Bash({ fs: rwfs });
@@ -213,9 +213,9 @@ Keep `ReadWriteFs` pointed at a workspace directory, not at the installed `just-
 **MountableFs** - Mount multiple filesystems at different paths. Combines read-only and read-write filesystems into a unified namespace:
 
 ```typescript
-import { Bash, MountableFs, InMemoryFs } from "just-bash";
-import { OverlayFs } from "just-bash/fs/overlay-fs";
-import { ReadWriteFs } from "just-bash/fs/read-write-fs";
+import { Bash, MountableFs, InMemoryFs } from "@demicodes/just-bash";
+import { OverlayFs } from "@demicodes/just-bash/fs/overlay-fs";
+import { ReadWriteFs } from "@demicodes/just-bash/fs/read-write-fs";
 
 const fs = new MountableFs({ base: new InMemoryFs() });
 
@@ -235,9 +235,9 @@ await bash.exec('echo "notes" > notes.txt'); // writes to workspace
 You can also configure mounts in the constructor:
 
 ```typescript
-import { MountableFs, InMemoryFs } from "just-bash";
-import { OverlayFs } from "just-bash/fs/overlay-fs";
-import { ReadWriteFs } from "just-bash/fs/read-write-fs";
+import { MountableFs, InMemoryFs } from "@demicodes/just-bash";
+import { OverlayFs } from "@demicodes/just-bash/fs/overlay-fs";
+import { ReadWriteFs } from "@demicodes/just-bash/fs/read-write-fs";
 
 const fs = new MountableFs({
   base: new InMemoryFs(),
@@ -440,7 +440,7 @@ await env.exec('sqlite3 data.db "SELECT * FROM users"');
 Parse bash scripts into an AST, transform them, and serialize back to bash. Good for instrumenting scripts (e.g., capturing per-command stdout/stderr) or extracting metadata before execution.
 
 ```typescript
-import { Bash, BashTransformPipeline, TeePlugin, CommandCollectorPlugin } from "just-bash";
+import { Bash, BashTransformPipeline, TeePlugin, CommandCollectorPlugin } from "@demicodes/just-bash";
 
 // Standalone pipeline — output can be run by any shell
 const pipeline = new BashTransformPipeline()
@@ -491,7 +491,7 @@ See [bash-tool](https://github.com/vercel-labs/bash-tool) for more.
 `Sandbox` is a drop-in replacement for [`@vercel/sandbox`](https://vercel.com/docs/vercel-sandbox) — same API, but runs entirely in-process with the virtual filesystem. Start with just-bash for development and testing, swap in a real sandbox when you need a full VM.
 
 ```typescript
-import { Sandbox } from "just-bash";
+import { Sandbox } from "@demicodes/just-bash";
 
 // Create a sandbox instance
 const sandbox = await Sandbox.create({ cwd: "/app" });
