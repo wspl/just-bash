@@ -49,6 +49,10 @@
       "types": "./src/commands/index.ts",
       "import": "./src/commands/index.ts"
     },
+    "./encoding": {
+      "types": "./src/encoding.ts",
+      "import": "./src/encoding.ts"
+    },
     "./parser": {
       "types": "./src/parser/parser.ts",
       "import": "./src/parser/parser.ts"
