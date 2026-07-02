@@ -30,52 +30,64 @@
       "import": "./dist/bundle/browser.js"
     },
     "./ast/types": {
-      "types": "./src/ast/types.ts",
-      "import": "./src/ast/types.ts"
+      "development": "./src/ast/types.ts",
+      "types": "./dist/ast/types.d.ts",
+      "import": "./dist/ast/types.js"
     },
     "./interpreter/helpers/ifs": {
-      "types": "./src/interpreter/helpers/ifs.ts",
-      "import": "./src/interpreter/helpers/ifs.ts"
+      "development": "./src/interpreter/helpers/ifs.ts",
+      "types": "./dist/interpreter/helpers/ifs.d.ts",
+      "import": "./dist/interpreter/helpers/ifs.js"
     },
     "./interpreter": {
-      "types": "./src/interpreter/index.ts",
-      "import": "./src/interpreter/index.ts"
+      "development": "./src/interpreter/index.ts",
+      "types": "./dist/interpreter/index.d.ts",
+      "import": "./dist/interpreter/index.js"
     },
     "./interpreter/errors": {
-      "types": "./src/interpreter/errors.ts",
-      "import": "./src/interpreter/errors.ts"
+      "development": "./src/interpreter/errors.ts",
+      "types": "./dist/interpreter/errors.d.ts",
+      "import": "./dist/interpreter/errors.js"
     },
     "./commands": {
-      "types": "./src/commands/index.ts",
-      "import": "./src/commands/index.ts"
+      "development": "./src/commands/index.ts",
+      "types": "./dist/commands/index.d.ts",
+      "import": "./dist/commands/index.js"
     },
     "./encoding": {
-      "types": "./src/encoding.ts",
-      "import": "./src/encoding.ts"
+      "development": "./src/encoding.ts",
+      "types": "./dist/encoding.d.ts",
+      "import": "./dist/encoding.js"
     },
     "./parser": {
-      "types": "./src/parser/parser.ts",
-      "import": "./src/parser/parser.ts"
+      "development": "./src/parser/parser.ts",
+      "types": "./dist/parser/parser.d.ts",
+      "import": "./dist/parser/parser.js"
     },
     "./parser/types": {
-      "types": "./src/parser/types.ts",
-      "import": "./src/parser/types.ts"
+      "development": "./src/parser/types.ts",
+      "types": "./dist/parser/types.d.ts",
+      "import": "./dist/parser/types.js"
     },
     "./parser/lexer": {
-      "types": "./src/parser/lexer.ts",
-      "import": "./src/parser/lexer.ts"
+      "development": "./src/parser/lexer.ts",
+      "types": "./dist/parser/lexer.d.ts",
+      "import": "./dist/parser/lexer.js"
     },
     "./fs/interface": {
-      "types": "./src/fs/interface.ts",
-      "import": "./src/fs/interface.ts"
+      "development": "./src/fs/interface.ts",
+      "types": "./dist/fs/interface.d.ts",
+      "import": "./dist/fs/interface.js"
     },
     "./limits": {
-      "types": "./src/limits.ts",
-      "import": "./src/limits.ts"
+      "development": "./src/limits.ts",
+      "types": "./dist/limits.d.ts",
+      "import": "./dist/limits.js"
     },
     "./types": {
-      "types": "./src/types.ts",
-      "import": "./src/types.ts"
+      "development": "./src/types.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
     }
   },
   "files": [
