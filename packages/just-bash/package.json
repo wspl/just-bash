@@ -110,8 +110,8 @@
     "dist/AGENTS.md"
   ],
   "bin": {
-    "just-bash": "./dist/bin/just-bash.js",
-    "just-bash-shell": "./dist/bin/shell/shell.js"
+    "just-bash": "dist/bin/just-bash.js",
+    "just-bash-shell": "dist/bin/shell/shell.js"
   },
   "publishConfig": {
     "access": "public"
