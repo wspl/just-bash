@@ -23,18 +23,18 @@ importers:
 
   examples/bash-agent:
     dependencies:
+      '@demicodes/just-bash':
+        specifier: workspace:*
+        version: link:../../packages/just-bash
       ai:
         specifier: ^6.0.11
         version: 6.0.168(zod@4.3.6)
       bash-tool:
         specifier: ^1.3.1
-        version: 1.3.16(ai@6.0.168(zod@4.3.6))(just-bash@packages+just-bash)
+        version: 1.3.16(ai@6.0.168(zod@4.3.6))
       glob:
         specifier: ^11.0.0
         version: 11.1.0
-      just-bash:
-        specifier: workspace:*
-        version: link:../../packages/just-bash
     devDependencies:
       '@types/node':
         specifier: ^25.0.3
@@ -48,7 +48,7 @@ importers:
 
   examples/cjs-consumer:
     dependencies:
-      just-bash:
+      '@demicodes/just-bash':
         specifier: workspace:*
         version: link:../../packages/just-bash
     devDependencies:
@@ -61,15 +61,15 @@ importers:
       '@ai-sdk/gateway':
         specifier: ^3.0.2
         version: 3.0.104(zod@4.3.6)
+      '@demicodes/just-bash':
+        specifier: workspace:*
+        version: link:../../packages/just-bash
       '@steipete/summarize-core':
         specifier: ^0.7.1
         version: 0.7.1
       ai:
         specifier: ^6.0.3
         version: 6.0.168(zod@4.3.6)
-      just-bash:
-        specifier: workspace:*
-        version: link:../../packages/just-bash
     devDependencies:
       '@types/node':
         specifier: ^25.0.3
@@ -83,6 +83,9 @@ importers:
 
   examples/executor-tools:
     dependencies:
+      '@demicodes/just-bash':
+        specifier: workspace:*
+        version: link:../../packages/just-bash
       '@executor-js/plugin-graphql':
         specifier: ^0.2.0
         version: 0.2.1(ioredis@5.10.1)(react@19.2.3)(vitest@4.1.5)
@@ -98,12 +101,12 @@ importers:
       '@just-bash/executor':
         specifier: workspace:*
         version: link:../../packages/just-bash-executor
-      just-bash:
-        specifier: workspace:*
-        version: link:../../packages/just-bash
 
   examples/website:
     dependencies:
+      '@demicodes/just-bash':
+        specifier: workspace:*
+        version: link:../../packages/just-bash
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.0-canary.26(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
@@ -112,13 +115,10 @@ importers:
         version: 6.0.168(zod@4.3.6)
       bash-tool:
         specifier: ^1.3.13
-        version: 1.3.16(ai@6.0.168(zod@4.3.6))(just-bash@packages+just-bash)
+        version: 1.3.16(ai@6.0.168(zod@4.3.6))
       geist:
         specifier: ^1.5.1
         version: 1.7.0(next@16.2.0-canary.26(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
-      just-bash:
-        specifier: workspace:*
-        version: link:../../packages/just-bash
       next:
         specifier: 16.2.0-canary.26
         version: 16.2.0-canary.26(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -251,6 +251,9 @@ importers:
 
   packages/just-bash-executor:
     dependencies:
+      '@demicodes/just-bash':
+        specifier: workspace:*
+        version: link:../just-bash
       '@executor-js/plugin-graphql':
         specifier: ^0.2.0
         version: 0.2.1(ioredis@5.10.1)(react@19.2.3)(vitest@4.1.5)
@@ -263,9 +266,6 @@ importers:
       '@executor-js/sdk':
         specifier: ^0.2.0
         version: 0.2.1(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.10.1))(react@19.2.3)(vitest@4.1.5)
-      just-bash:
-        specifier: workspace:*
-        version: link:../just-bash
     devDependencies:
       '@types/node':
         specifier: ^25.0.3
@@ -6042,14 +6042,12 @@ snapshots:
 
   baseline-browser-mapping@2.10.23: {}
 
-  bash-tool@1.3.16(ai@6.0.168(zod@4.3.6))(just-bash@packages+just-bash):
+  bash-tool@1.3.16(ai@6.0.168(zod@4.3.6)):
     dependencies:
       ai: 6.0.168(zod@4.3.6)
       fast-glob: 3.3.3
       yaml: 2.8.3
       zod: 3.25.76
-    optionalDependencies:
-      just-bash: link:packages/just-bash
 
   better-path-resolve@1.0.0:
     dependencies:

@@ -16,7 +16,7 @@ import {
   type CommandContext,
   decodeBytesToUtf8,
   type ExecResult,
-} from "just-bash";
+} from "@demicodes/just-bash";
 
 // ── Naming ──────────────────────────────────────────────────────
 

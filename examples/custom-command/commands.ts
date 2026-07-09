@@ -13,7 +13,7 @@ import {
   buildLinkSummaryPrompt,
   pickSummaryLengthForCharacters,
 } from "@steipete/summarize-core/prompts";
-import { decodeBytesToUtf8, defineCommand } from "just-bash";
+import { decodeBytesToUtf8, defineCommand } from "@demicodes/just-bash";
 
 /**
  * Generate a random UUID
@@ -294,4 +294,3 @@ export const summarizeCommand = defineCommand("summarize", async (args) => {
     };
   }
 });
-

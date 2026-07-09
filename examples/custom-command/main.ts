@@ -5,7 +5,7 @@
  * Run with: npx tsx main.ts
  */
 
-import { Bash } from "just-bash";
+import { Bash } from "@demicodes/just-bash";
 import {
   uuidCommand,
   jsonFormatCommand,
@@ -102,4 +102,3 @@ async function demo() {
 }
 
 demo().catch(console.error);
-
