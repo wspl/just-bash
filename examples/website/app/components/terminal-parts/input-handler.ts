@@ -1,4 +1,4 @@
-import type { Bash } from "just-bash/browser";
+import type { Bash } from "@demicodes/just-bash/browser";
 import { track } from "@vercel/analytics";
 import { HISTORY_KEY, MAX_HISTORY } from "./constants";
 import { formatMarkdown } from "./markdown";

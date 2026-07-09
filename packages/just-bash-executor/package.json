@@ -46,7 +46,7 @@
   "license": "Apache-2.0",
   "author": "Malte and Claude",
   "peerDependencies": {
-    "just-bash": "workspace:*",
+    "@demicodes/just-bash": "workspace:*",
     "@executor-js/sdk": "^0.2.0",
     "@executor-js/plugin-graphql": "^0.2.0",
     "@executor-js/plugin-mcp": "^0.2.0",

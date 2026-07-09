@@ -12,7 +12,7 @@
  */
 
 import { createExecutor } from "@just-bash/executor";
-import { Bash } from "just-bash";
+import { Bash } from "@demicodes/just-bash";
 
 const executor = await createExecutor({
   tools: {

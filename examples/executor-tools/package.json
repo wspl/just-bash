@@ -10,7 +10,7 @@
     "start:multi-api": "npx tsx multi-api-agent.ts"
   },
   "dependencies": {
-    "just-bash": "workspace:*",
+    "@demicodes/just-bash": "workspace:*",
     "@just-bash/executor": "workspace:*",
     "@executor-js/sdk": "^0.2.0",
     "@executor-js/plugin-graphql": "^0.2.0",
