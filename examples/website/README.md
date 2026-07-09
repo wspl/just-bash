@@ -84,8 +84,8 @@ This is an interactive demo of **just-bash** running entirely in your browser, w
 ## Development
 
 ```bash
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the terminal.

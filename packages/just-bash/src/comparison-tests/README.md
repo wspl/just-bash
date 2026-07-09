@@ -12,17 +12,17 @@ Comparison tests validate that just-bash produces the same output as real bash. 
 
 ```bash
 # Run all comparison tests (uses fixtures, no real bash needed)
-pnpm test:comparison
+bun run test:comparison
 
 # Run a specific test file
-pnpm test:run src/comparison-tests/ls.comparison.test.ts
+bun run test:run src/comparison-tests/ls.comparison.test.ts
 
 # Re-record fixtures (runs real bash, skips locked fixtures)
-pnpm test:comparison:record
-# Or: RECORD_FIXTURES=1 pnpm test:comparison
+bun run test:comparison:record
+# Or: RECORD_FIXTURES=1 bun run test:comparison
 
 # Force re-record ALL fixtures including locked ones
-RECORD_FIXTURES=force pnpm test:comparison
+RECORD_FIXTURES=force bun run test:comparison
 ```
 
 ## Adding New Tests
@@ -62,7 +62,7 @@ describe("mycommand - Real Bash Comparison", () => {
 ### 2. Record the fixture
 
 ```bash
-RECORD_FIXTURES=1 pnpm test:run src/comparison-tests/mycommand.comparison.test.ts
+RECORD_FIXTURES=1 bun run test:run src/comparison-tests/mycommand.comparison.test.ts
 ```
 
 This creates `src/comparison-tests/fixtures/mycommand.comparison.fixtures.json`.
@@ -75,10 +75,10 @@ When bash behavior changes or you need to update expected outputs:
 
 ```bash
 # Re-record specific test file
-RECORD_FIXTURES=1 pnpm test:run src/comparison-tests/ls.comparison.test.ts
+RECORD_FIXTURES=1 bun run test:run src/comparison-tests/ls.comparison.test.ts
 
 # Re-record all fixtures
-pnpm test:comparison:record
+bun run test:comparison:record
 ```
 
 ## Handling Platform Differences

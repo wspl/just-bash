@@ -7,12 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     globals: true,
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/examples/**",
-      "**/.pnpm-store/**",
-    ],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/examples/**"],
     pool: "threads",
     isolate: false,
     setupFiles: [resolve(__dirname, "src/vitest-setup.ts")],

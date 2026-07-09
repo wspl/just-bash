@@ -533,13 +533,11 @@ const SKIP_DIRS = new Set([
   "dist",
   "vendor",
   ".git",
-  ".pnpm-store",
   ".next",
   "coverage",
 ]);
 
 const SKIP_PATH_PATTERNS = [
-  /(^|\/)\.pnpm-store(\/|$)/,
   /(^|\/)examples\/website\/app\/api\/agent\/_agent-data(\/|$)/,
 ];
 

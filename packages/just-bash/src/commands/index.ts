@@ -1,5 +1,5 @@
 export {
+  type CommandName,
   createLazyCommands,
   getCommandNames,
-  type CommandName,
 } from "./registry.js";

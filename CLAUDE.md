@@ -10,31 +10,31 @@ just-bash is a TypeScript implementation of a bash interpreter with an in-memory
 
 ```bash
 # Build & Lint
-pnpm build                 # Build TypeScript (required before using dist/)
-pnpm typecheck             # Type check
-pnpm lint:fix              # Fix lint errors (biome)
-pnpm knip                  # Check for unused exports/dependencies
+bun run build              # Build TypeScript (required before using dist/)
+bun run typecheck          # Type check
+bun run lint:fix           # Fix lint errors (biome)
+bun run knip               # Check for unused exports/dependencies
 
 # Testing
-pnpm test:run              # Run ALL tests (including spec tests)
-pnpm test:unit             # Run unit tests only (fast, no comparison/spec)
-pnpm test:comparison       # Run comparison tests only (uses fixtures)
-pnpm test:comparison:record # Re-record comparison test fixtures
-pnpm test:wasm             # Run WASM tests (python3, sqlite3, js-exec)
+bun run test:run           # Run ALL tests (including spec tests)
+bun run test:unit          # Run unit tests only (fast, no comparison/spec)
+bun run test:comparison    # Run comparison tests only (uses fixtures)
+bun run test:comparison:record # Re-record comparison test fixtures
+bun run test:wasm          # Run WASM tests (python3, sqlite3, js-exec)
 
 # Excluding spec tests (spec tests have known failures)
-pnpm test:run --exclude src/spec-tests
+bun run test:run --exclude src/spec-tests
 
 # Run specific test file
-pnpm test:run src/commands/grep/grep.basic.test.ts
+bun run test:run src/commands/grep/grep.basic.test.ts
 
 # Run specific spec test file by name pattern
-pnpm test:run src/spec-tests/spec.test.ts -t "arith.test.sh"
-pnpm test:run src/spec-tests/spec.test.ts -t "array-basic.test.sh"
+bun run test:run src/spec-tests/spec.test.ts -t "arith.test.sh"
+bun run test:run src/spec-tests/spec.test.ts -t "array-basic.test.sh"
 
 # Interactive shell
-pnpm shell                 # Full network access
-pnpm shell --no-network    # No network
+bun run shell              # Full network access
+bun run shell --no-network # No network
 
 # Sandboxed CLI (read-only by default)
 node ./dist/cli/just-bash.js -c 'ls -la' --root .
@@ -70,25 +70,25 @@ Options:
 - `--json` - Output as JSON (stdout, stderr, exitCode)
 - `-e, --errexit` - Exit on first error
 
-### Debug with `pnpm dev:exec`
+### Debug with `bun run dev:exec`
 
 Reads script from stdin, executes it, shows output. Prefer this over ad-hoc test files.
 
 ```bash
 # Basic execution
-echo 'echo hello' | pnpm dev:exec
+echo 'echo hello' | bun run dev:exec
 
 # Compare with real bash
-echo 'x=5; echo $((x + 3))' | pnpm dev:exec --real-bash
+echo 'x=5; echo $((x + 3))' | bun run dev:exec --real-bash
 
 # Show parsed AST
-echo 'for i in 1 2 3; do echo $i; done' | pnpm dev:exec --print-ast
+echo 'for i in 1 2 3; do echo $i; done' | bun run dev:exec --print-ast
 
 # Multi-line script
 echo 'arr=(a b c)
 for x in "${arr[@]}"; do
   echo "item: $x"
-done' | pnpm dev:exec --real-bash
+done' | bun run dev:exec --real-bash
 ```
 
 ## Architecture
@@ -156,7 +156,7 @@ Input Script → Parser (src/parser/) → AST (src/ast/) → Interpreter (src/in
 - `-m MODULE` names are validated with `/^[a-zA-Z_][a-zA-Z0-9_.]*$/` to prevent code injection
 - Worker is terminated on timeout via `workerRef` pattern
 - WASM memory capped at 512MB (`-sMAXIMUM_MEMORY=536870912`)
-- Tests: `pnpm test:wasm` (excluded from `pnpm test:unit` by default due to WASM load time)
+- Tests: `bun run test:wasm` (excluded from `bun run test:unit` by default due to WASM load time)
 
 ### Adding Commands
 
@@ -181,13 +181,13 @@ Comparison tests use pre-recorded bash outputs stored in `src/comparison-tests/f
 
 ```bash
 # Run comparison tests (uses fixtures, no real bash needed)
-pnpm test:comparison
+bun run test:comparison
 
 # Re-record fixtures (skips locked fixtures)
-RECORD_FIXTURES=1 pnpm test:run src/comparison-tests/mytest.comparison.test.ts
+RECORD_FIXTURES=1 bun run test:run src/comparison-tests/mytest.comparison.test.ts
 
 # Force re-record including locked fixtures
-RECORD_FIXTURES=force pnpm test:comparison
+RECORD_FIXTURES=force bun run test:comparison
 ```
 
 When adding comparison tests:
@@ -215,7 +215,7 @@ When adding comparison tests:
 
 ## Prototype Pollution Prevention
 
-All `Record<string, T>` objects must use null prototypes to prevent `__proto__` lookups from traversing the prototype chain. This is enforced by the banned-patterns linter (`pnpm lint:banned`).
+All `Record<string, T>` objects must use null prototypes to prevent `__proto__` lookups from traversing the prototype chain. This is enforced by the banned-patterns linter (`bun run lint:banned`).
 
 **For static lookup tables**, use `nullPrototype()` from `src/commands/query-engine/safe-object.ts`:
 
@@ -253,8 +253,8 @@ Object.setPrototypeOf(MAP, null);
 ## Development Guidelines
 
 - Read AGENTS.md
-- Use `pnpm dev:exec` instead of ad-hoc test scripts (avoids approval prompts)
-- Always verify with `pnpm typecheck && pnpm lint:fix && pnpm knip && pnpm test:run` before finishing
+- Use `bun run dev:exec` instead of ad-hoc test scripts (avoids approval prompts)
+- Always verify with `bun run typecheck && bun run lint:fix && bun run knip && bun run test:run` before finishing
 - Assert full stdout/stderr in tests, not partial matches
 - Implementation must match real bash behavior, not convenience
 - Dependencies using WASM are not allowed (exception: sql.js for SQLite, approved for security sandboxing)

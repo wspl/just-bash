@@ -5,8 +5,8 @@
  * and outputs the AST, exit code, stderr, and stdout.
  *
  * Usage:
- *   echo '<script>' | pnpm dev:exec
- *   cat script.sh | pnpm dev:exec
+ *   echo '<script>' | bun run dev:exec
+ *   cat script.sh | bun run dev:exec
  *
  * Options:
  *   --print-ast   Show the parsed AST
@@ -49,8 +49,8 @@ async function readStdin(): Promise<string> {
 
 // Only read from stdin to avoid shell expansion issues with command line args
 if (process.stdin.isTTY) {
-  console.error("Usage: echo '<script>' | pnpm dev:exec");
-  console.error("       cat script.sh | pnpm dev:exec");
+  console.error("Usage: echo '<script>' | bun run dev:exec");
+  console.error("       cat script.sh | bun run dev:exec");
   process.exit(1);
 }
 

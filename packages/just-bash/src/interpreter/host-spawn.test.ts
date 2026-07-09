@@ -1,17 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { Bash } from "../Bash.js";
-import { Interpreter } from "./interpreter.js";
-import { parse } from "../parser/parser.js";
-import { resolveLimits } from "../limits.js";
-import { InMemoryFs } from "../fs/in-memory-fs/in-memory-fs.js";
-import { mapToRecord } from "../helpers/env.js";
-import type { InterpreterState } from "./types.js";
-import type { Command } from "../types.js";
 import type { StatementNode } from "../ast/types.js";
+import { Bash } from "../Bash.js";
+import { InMemoryFs } from "../fs/in-memory-fs/in-memory-fs.js";
+import { resolveLimits } from "../limits.js";
+import { parse } from "../parser/parser.js";
+import type { Command } from "../types.js";
+import { Interpreter } from "./interpreter.js";
+import type { InterpreterState } from "./types.js";
 
 describe("hostSpawn hook", () => {
   it("dispatches external commands to hostSpawn when present", async () => {
-    const bash = new Bash();
     const calls: Array<{ command: string; args: string[] }> = [];
 
     // Override Bash.exec to inject hostSpawn into the interpreter context.
@@ -92,7 +90,11 @@ describe("hostSpawn hook", () => {
           if (command === "git" && args[0] === "status") {
             return { stdout: "clean\n", stderr: "", exitCode: 0 };
           }
-          return { stdout: "", stderr: `${command}: not found\n`, exitCode: 127 };
+          return {
+            stdout: "",
+            stderr: `${command}: not found\n`,
+            exitCode: 127,
+          };
         },
       },
       state,
@@ -112,8 +114,11 @@ describe("hostSpawn hook", () => {
 
     // Use a minimal state via Bash internals
     const state = (bash as unknown as { state: InterpreterState }).state;
-    const commands = (bash as unknown as { commands: Map<string, Command> }).commands;
-    const fs = (bash as unknown as { fs: import("../fs/interface.js").IFileSystem }).fs;
+    const commands = (bash as unknown as { commands: Map<string, Command> })
+      .commands;
+    const fs = (
+      bash as unknown as { fs: import("../fs/interface.js").IFileSystem }
+    ).fs;
     const limits = resolveLimits({});
 
     const interpreter = new Interpreter(
@@ -220,7 +225,11 @@ describe("hostSpawn hook", () => {
       name: "editor",
       execute: async (args, ctx) => {
         editorCalls.push({ args, cwd: ctx.cwd });
-        return { stdout: `editor ran with ${args.join(" ")}\n`, stderr: "", exitCode: 0 };
+        return {
+          stdout: `editor ran with ${args.join(" ")}\n`,
+          stderr: "",
+          exitCode: 0,
+        };
       },
     };
     commands.set("editor", editorCommand);
@@ -233,7 +242,11 @@ describe("hostSpawn hook", () => {
         exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
         hostSpawn: async (command, args) => {
           calls.push({ command, args });
-          return { stdout: "", stderr: `${command}: not found\n`, exitCode: 127 };
+          return {
+            stdout: "",
+            stderr: `${command}: not found\n`,
+            exitCode: 127,
+          };
         },
       },
       state,
@@ -251,8 +264,11 @@ describe("hostSpawn hook", () => {
   it("dispatches background statements through jobControl when present", async () => {
     const bash = new Bash();
     const state = (bash as unknown as { state: InterpreterState }).state;
-    const commands = (bash as unknown as { commands: Map<string, Command> }).commands;
-    const fs = (bash as unknown as { fs: import("../fs/interface.js").IFileSystem }).fs;
+    const commands = (bash as unknown as { commands: Map<string, Command> })
+      .commands;
+    const fs = (
+      bash as unknown as { fs: import("../fs/interface.js").IFileSystem }
+    ).fs;
     const limits = resolveLimits({});
     const backgroundCalls: string[] = [];
     const hostCalls: Array<{ command: string; args: string[] }> = [];
@@ -265,7 +281,11 @@ describe("hostSpawn hook", () => {
         exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
         hostSpawn: async (command, args) => {
           hostCalls.push({ command, args });
-          return { stdout: "", stderr: `${command}: not found\n`, exitCode: 127 };
+          return {
+            stdout: "",
+            stderr: `${command}: not found\n`,
+            exitCode: 127,
+          };
         },
         jobControl: {
           startBackground: async (statement: StatementNode) => {
@@ -277,7 +297,9 @@ describe("hostSpawn hook", () => {
       state,
     );
 
-    const result = await interpreter.executeScript(parse("sh -c 'exit 5' &\necho after"));
+    const result = await interpreter.executeScript(
+      parse("sh -c 'exit 5' &\necho after"),
+    );
 
     expect(backgroundCalls).toEqual(["sh -c 'exit 5' &"]);
     expect(hostCalls).toEqual([]);
@@ -288,8 +310,11 @@ describe("hostSpawn hook", () => {
   it("dispatches jobs and wait builtins through jobControl when present", async () => {
     const bash = new Bash();
     const state = (bash as unknown as { state: InterpreterState }).state;
-    const commands = (bash as unknown as { commands: Map<string, Command> }).commands;
-    const fs = (bash as unknown as { fs: import("../fs/interface.js").IFileSystem }).fs;
+    const commands = (bash as unknown as { commands: Map<string, Command> })
+      .commands;
+    const fs = (
+      bash as unknown as { fs: import("../fs/interface.js").IFileSystem }
+    ).fs;
     const limits = resolveLimits({});
     const calls: Array<{ hook: "jobs" | "wait"; args: string[] }> = [];
 
@@ -307,7 +332,11 @@ describe("hostSpawn hook", () => {
         jobControl: {
           jobs: async (args) => {
             calls.push({ hook: "jobs", args });
-            return { stdout: "[1] Running sh -c exit 5\n", stderr: "", exitCode: 0 };
+            return {
+              stdout: "[1] Running sh -c exit 5\n",
+              stderr: "",
+              exitCode: 0,
+            };
           },
           wait: async (args) => {
             calls.push({ hook: "wait", args });

@@ -224,7 +224,7 @@ function parseArgs(): ShellOptions {
       options.network = false;
     } else if (args[i] === "--help" || args[i] === "-h") {
       console.log(`
-Usage: pnpm shell [options]
+Usage: bun run shell [options]
 
 Interactive shell using OverlayFs - reads from the current directory,
 writes stay in memory (copy-on-write).
@@ -236,8 +236,8 @@ Options:
   --help, -h          Show this help message
 
 Example:
-  pnpm shell
-  pnpm shell --network
+  bun run shell
+  bun run shell --network
 `);
       process.exit(0);
     }

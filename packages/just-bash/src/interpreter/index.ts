@@ -1,3 +1,14 @@
+export {
+  ArithmeticError,
+  BadSubstitutionError,
+  BreakError,
+  ContinueError,
+  ErrexitError,
+  ExecutionLimitError,
+  ExitError,
+  NounsetError,
+  ReturnError,
+} from "./errors.js";
 export type { InterpreterOptions } from "./interpreter.js";
 export { Interpreter } from "./interpreter.js";
 export type {
@@ -7,14 +18,3 @@ export type {
   ShellOptions,
   ShoptOptions,
 } from "./types.js";
-export {
-  ExitError,
-  ExecutionLimitError,
-  ErrexitError,
-  NounsetError,
-  ArithmeticError,
-  BadSubstitutionError,
-  BreakError,
-  ContinueError,
-  ReturnError,
-} from "./errors.js";

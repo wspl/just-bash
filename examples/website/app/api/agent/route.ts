@@ -31,7 +31,7 @@ Key features of just-bash:
 
 Use cat to read files. Use head, tail to read parts of large files.
 
-Keep responses concise. You do not have access to pnpm, npm, or node.`;
+Keep responses concise. You do not have access to bun, npm, or node.`;
 
 export async function POST(req: Request) {
   const { messages } = await req.json();

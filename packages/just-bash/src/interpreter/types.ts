@@ -499,5 +499,8 @@ export interface InterpreterContext {
   hostResolveCommand?: (
     name: string,
     env: Record<string, string>,
-  ) => Promise<{ kind: "builtin" | "registered" | "function" | "file"; value: string } | null>;
+  ) => Promise<{
+    kind: "builtin" | "registered" | "function" | "file";
+    value: string;
+  } | null>;
 }

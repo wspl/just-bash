@@ -556,13 +556,13 @@ Options:
 ### Interactive Shell
 
 ```bash
-pnpm shell
+bun run shell
 ```
 
 The interactive shell has full internet access by default. Disable with `--no-network`:
 
 ```bash
-pnpm shell --no-network
+bun run shell --no-network
 ```
 
 ## Execution Protection

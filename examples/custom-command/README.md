@@ -15,13 +15,13 @@ This example demonstrates how to extend just-bash with custom TypeScript command
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Run the demo
-pnpm start
+bun run start
 
 # To enable the summarize command, set your Vercel AI Gateway API key:
-AI_GATEWAY_API_KEY=your-key pnpm start
+AI_GATEWAY_API_KEY=your-key bun run start
 ```
 
 ## Summarize Command
@@ -77,4 +77,3 @@ Your command receives a context object with:
 - `env` - Environment variables
 - `stdin` - Standard input (from pipes)
 - `exec` - Function to run subcommands
-

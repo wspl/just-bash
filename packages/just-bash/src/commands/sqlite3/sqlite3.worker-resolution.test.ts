@@ -83,7 +83,7 @@ describe("sqlite3 findWorkerPath()", () => {
     mkdirSync(emptyDir, { recursive: true });
 
     expect(() => _internals.findWorkerPath(emptyDir)).toThrow(
-      /sqlite3 worker not found.*pnpm build/,
+      /sqlite3 worker not found.*bun run build/,
     );
   });
 });

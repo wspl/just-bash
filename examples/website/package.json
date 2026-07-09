@@ -5,8 +5,8 @@
   "scripts": {
     "generate": "node scripts/generate-terminal-content.mjs",
     "fetch-agent-data": "node scripts/fetch-agent-data.mjs",
-    "dev": "pnpm generate && next dev",
-    "build": "pnpm --filter @demicodes/just-bash build && pnpm generate && pnpm fetch-agent-data && next build",
+    "dev": "bun run generate && next dev",
+    "build": "bun --filter @demicodes/just-bash build && bun run generate && bun run fetch-agent-data && next build",
     "start": "next start",
     "lint": "eslint"
   },

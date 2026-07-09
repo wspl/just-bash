@@ -207,7 +207,9 @@ describe("Bash Syntax - Parser Edge Cases", () => {
   describe("operator parsing", () => {
     it("should keep arithmetic assignment operators inside arithmetic commands", async () => {
       const env = new Bash();
-      const result = await env.exec("i=8; (( i -= 2 )); (( i /= 3 )); (( i *= 5 )); (( i %= 4 )); echo $i");
+      const result = await env.exec(
+        "i=8; (( i -= 2 )); (( i /= 3 )); (( i *= 5 )); (( i %= 4 )); echo $i",
+      );
       expect(result.stdout).toBe("2\n");
     });
 

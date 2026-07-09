@@ -271,7 +271,7 @@ function findWorkerPath(
   }
 
   throw new Error(
-    "sqlite3 worker not found. Run 'pnpm build' to compile the worker.",
+    "sqlite3 worker not found. Run 'bun run build' to compile the worker.",
   );
 }
 

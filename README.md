@@ -21,13 +21,13 @@ examples/         example consumers (bash-agent, cjs-consumer, website)
 ## Working in the repo
 
 ```bash
-pnpm install              # install all workspace deps
-pnpm build                # build all packages
-pnpm test:run             # run unit + comparison tests
-pnpm test:dist            # smoke-test the bundled output
-pnpm lint                 # biome + per-package banned-pattern checks
-pnpm typecheck            # tsc across all packages
+bun install               # install all workspace deps
+bun run build             # build all packages
+bun run test:run          # run unit + comparison tests
+bun run test:dist         # smoke-test the bundled output
+bun run lint              # biome + per-package banned-pattern checks
+bun run typecheck         # tsc across all packages
 ```
 
-Per-package commands run via `pnpm --filter <name> <script>` — e.g.
-`pnpm --filter just-bash test:wasm`.
+Per-package commands run via `bun --filter <name> <script>` — e.g.
+`bun --filter @demicodes/just-bash test:wasm`.

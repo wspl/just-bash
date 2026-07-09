@@ -439,7 +439,10 @@ export async function executeExternalCommand(
         jsBootstrapCode: ctx.jsBootstrapCode,
         invokeTool: ctx.invokeTool,
       };
-      const guardedCmdCtx = createDefenseAwareCommandContext(cmdCtx, commandName);
+      const guardedCmdCtx = createDefenseAwareCommandContext(
+        cmdCtx,
+        commandName,
+      );
       try {
         const runRegistered = (): Promise<ExecResult> =>
           awaitWithDefenseContext(
@@ -599,7 +602,10 @@ export async function executeExternalCommand(
       `${commandName}: ${sanitizeErrorMessage(getErrorMessage(error))}\n`,
     );
   } finally {
-    if (usesGroupStdin && (cmd.consumesStdin || shouldConsumeGroupStdin(commandName))) {
+    if (
+      usesGroupStdin &&
+      (cmd.consumesStdin || shouldConsumeGroupStdin(commandName))
+    ) {
       ctx.state.groupStdin = "";
     }
   }

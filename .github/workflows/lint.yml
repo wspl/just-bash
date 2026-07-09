@@ -13,24 +13,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: bun run lint
 
       - name: Knip
-        run: pnpm knip
+        run: bun run knip
 
       - name: Build
-        run: pnpm build
+        run: bun run build
 
       - name: Check worker sync
-        run: pnpm check:worker-sync
+        run: bun run check:worker-sync

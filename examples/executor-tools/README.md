@@ -6,10 +6,10 @@ Demonstrates executor tool invocation in just-bash. Sandboxed JavaScript code ru
 
 ```bash
 cd examples/executor-tools
-pnpm install
+bun install
 
 # Run all examples
-pnpm start
+bun run start
 
 # Run a specific example
 npx tsx inline-tools.ts

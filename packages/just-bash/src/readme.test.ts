@@ -151,10 +151,16 @@ function addImpliedImports(code: string): string {
   if (code.includes("Bash") && !code.includes('from "@demicodes/just-bash"')) {
     imports.push('import { Bash } from "@demicodes/just-bash";');
   }
-  if (code.includes("defineCommand") && !code.includes('from "@demicodes/just-bash"')) {
+  if (
+    code.includes("defineCommand") &&
+    !code.includes('from "@demicodes/just-bash"')
+  ) {
     imports.push('import { defineCommand } from "@demicodes/just-bash";');
   }
-  if (code.includes("Sandbox") && !code.includes('from "@demicodes/just-bash"')) {
+  if (
+    code.includes("Sandbox") &&
+    !code.includes('from "@demicodes/just-bash"')
+  ) {
     imports.push('import { Sandbox } from "@demicodes/just-bash";');
   }
   // bash-tool imports are handled via ephemeral type definitions
@@ -162,13 +168,17 @@ function addImpliedImports(code: string): string {
     code.includes("OverlayFs") &&
     !code.includes('from "@demicodes/just-bash/fs/overlay-fs"')
   ) {
-    imports.push('import { OverlayFs } from "@demicodes/just-bash/fs/overlay-fs";');
+    imports.push(
+      'import { OverlayFs } from "@demicodes/just-bash/fs/overlay-fs";',
+    );
   }
   if (
     code.includes("ReadWriteFs") &&
     !code.includes('from "@demicodes/just-bash/fs/read-write-fs"')
   ) {
-    imports.push('import { ReadWriteFs } from "@demicodes/just-bash/fs/read-write-fs";');
+    imports.push(
+      'import { ReadWriteFs } from "@demicodes/just-bash/fs/read-write-fs";',
+    );
   }
   // ai imports are handled via ephemeral type definitions
 

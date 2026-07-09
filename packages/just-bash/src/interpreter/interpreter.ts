@@ -70,8 +70,8 @@ import {
   ArithmeticError,
   BadSubstitutionError,
   BraceExpansionError,
-  BuiltinFatalError,
   BreakError,
+  BuiltinFatalError,
   ContinueError,
   ErrexitError,
   ExecutionAbortedError,
@@ -102,8 +102,8 @@ import { executePipeline as executePipelineHelper } from "./pipeline-execution.j
 import {
   applyRedirections,
   type ExpandedRedirectTargets,
-  preOpenOutputRedirects,
   preExpandRedirectTargets,
+  preOpenOutputRedirects,
   processFdVariableRedirections,
   validateOutputRedirects,
 } from "./redirections.js";
@@ -169,7 +169,9 @@ export interface InterpreterOptions {
   jobControl?: InterpreterContext["jobControl"];
 }
 
-function wordHasCommandSubstitution(word: WordNode | null | undefined): boolean {
+function wordHasCommandSubstitution(
+  word: WordNode | null | undefined,
+): boolean {
   if (!word) return false;
   return word.parts.some(partHasCommandSubstitution);
 }

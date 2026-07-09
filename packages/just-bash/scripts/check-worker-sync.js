@@ -58,7 +58,7 @@ async function main() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(
-        `[FAIL] Could not read ${jsPath}: ${message}\nRun: pnpm build:worker`,
+        `[FAIL] Could not read ${jsPath}: ${message}\nRun: bun run build:worker`,
       );
       failed = true;
       continue;
@@ -95,7 +95,7 @@ async function main() {
           `Generated hash: ${generatedHash}\n` +
           `Checked-in hash: ${existingHash}\n` +
           `First differing line: ${firstDiffLine}\n` +
-          "Run: pnpm build:worker",
+          "Run: bun run build:worker",
       );
       failed = true;
     }

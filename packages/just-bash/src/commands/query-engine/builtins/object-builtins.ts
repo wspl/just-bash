@@ -307,8 +307,7 @@ export function evalObjectBuiltin(
 
         // Auto-create root structure based on first path element
         if (result === null) {
-          result =
-            typeof pathParts[0] === "number" ? [] : Object.create(null);
+          result = typeof pathParts[0] === "number" ? [] : Object.create(null);
         }
 
         // Navigate to parent and set value
