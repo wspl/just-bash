@@ -1,6 +1,6 @@
 {
   "name": "@demicodes/just-bash",
-  "version": "3.0.1-demi.4",
+  "version": "3.0.1-demi.5",
   "description": "A simulated bash environment with virtual filesystem",
   "repository": {
     "type": "git",
@@ -91,23 +91,10 @@
     }
   },
   "files": [
-    "dist/bundle/",
-    "dist/bin/",
-    "dist/*.d.ts",
-    "dist/*.d.cts",
-    "dist/ast/*.d.ts",
-    "dist/commands/**/*.d.ts",
-    "dist/commands/sqlite3/worker.js",
-    "dist/fs/**/*.d.ts",
-    "dist/interpreter/**/*.d.ts",
-    "dist/network/**/*.d.ts",
-    "dist/parser/*.d.ts",
-    "dist/sandbox/*.d.ts",
-    "dist/utils/*.d.ts",
+    "dist/",
     "vendor/cpython-emscripten/",
     "README.md",
-    "CHANGELOG.md",
-    "dist/AGENTS.md"
+    "CHANGELOG.md"
   ],
   "bin": {
     "just-bash": "dist/bin/just-bash.js",
