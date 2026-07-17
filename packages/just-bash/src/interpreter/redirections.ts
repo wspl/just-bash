@@ -476,8 +476,6 @@ export async function applyRedirections(
   preExpandedTargets?: ExpandedRedirectTargets,
 ): Promise<ExecResult> {
   let { stdout, stderr, exitCode } = result;
-  const originalStdout = stdout;
-  const originalStderr = stderr;
 
   // Determine encoding for stdout writes from the producer's explicit
   // shape rather than guessing at the bytes:
@@ -677,26 +675,13 @@ export async function applyRedirections(
         // the persistent FD state here. The FD will be restored after this command.
         // Permanent FD closes are handled by `exec N>&-` in executeSimpleCommand.
         if (target === "-") {
+          // Sink model: closing an fd discards whatever is still routed to it.
+          // An earlier dup (e.g. `2>&1`) copied the sink reference, so content
+          // duplicated onto another fd keeps flowing to the pre-close target.
           if (fd === 1) {
-            const previousRedir = redirections[i - 1];
-            if (
-              previousRedir &&
-              (previousRedir.operator === ">&" ||
-                previousRedir.operator === "<&") &&
-              (previousRedir.fd ?? 1) === 2
-            ) {
-              const previousTarget =
-                preExpandedTargets?.get(i - 1) ??
-                (await expandWord(ctx, previousRedir.target as WordNode));
-              stdout =
-                previousTarget === "1" || previousTarget === "&1"
-                  ? originalStderr
-                  : "";
-            } else {
-              stdout = "";
-            }
+            fd1Sink = { kind: "discard" };
           } else if (fd === 2) {
-            stderr = "";
+            fd2Sink = { kind: "discard" };
           }
           break;
         }
