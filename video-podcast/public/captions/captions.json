@@ -1,0 +1,1633 @@
+[
+  {
+    "text": "如果你正在给 AI Agent 增加工具能力，",
+    "startMs": 500,
+    "endMs": 4368,
+    "timestampMs": 500,
+    "confidence": 1
+  },
+  {
+    "text": "很快就会遇到一个熟悉的问题：",
+    "startMs": 4368,
+    "endMs": 6653,
+    "timestampMs": 4368,
+    "confidence": 1
+  },
+  {
+    "text": "模型很擅长写 Shell 命令，",
+    "startMs": 6653,
+    "endMs": 9290,
+    "timestampMs": 6653,
+    "confidence": 1
+  },
+  {
+    "text": "但我们真的要把它写出的每一行都交给操作系统执行吗？",
+    "startMs": 9290,
+    "endMs": 13510,
+    "timestampMs": 9290,
+    "confidence": 1
+  },
+  {
+    "text": "今天这期视频，我们来拆解 JustBash。",
+    "startMs": 13510,
+    "endMs": 17026,
+    "timestampMs": 13510,
+    "confidence": 1
+  },
+  {
+    "text": "它是一个用 TypeScript 实现的虚拟 Bash 环境，",
+    "startMs": 17026,
+    "endMs": 22300,
+    "timestampMs": 17026,
+    "confidence": 1
+  },
+  {
+    "text": "拥有内存文件系统、",
+    "startMs": 22300,
+    "endMs": 23707,
+    "timestampMs": 22300,
+    "confidence": 1
+  },
+  {
+    "text": "常用 Unix 命令、",
+    "startMs": 23707,
+    "endMs": 25465,
+    "timestampMs": 23707,
+    "confidence": 1
+  },
+  {
+    "text": "管道、",
+    "startMs": 25465,
+    "endMs": 25915,
+    "timestampMs": 25465,
+    "confidence": 1
+  },
+  {
+    "text": "重定向和脚本语法。",
+    "startMs": 25915,
+    "endMs": 27321,
+    "timestampMs": 25915,
+    "confidence": 1
+  },
+  {
+    "text": "更重要的是，",
+    "startMs": 27321,
+    "endMs": 28200,
+    "timestampMs": 27321,
+    "confidence": 1
+  },
+  {
+    "text": "它让宿主程序可以明确决定 Shell 能看见什么、",
+    "startMs": 28200,
+    "endMs": 32420,
+    "timestampMs": 28200,
+    "confidence": 1
+  },
+  {
+    "text": "能访问什么，",
+    "startMs": 32420,
+    "endMs": 33299,
+    "timestampMs": 32420,
+    "confidence": 1
+  },
+  {
+    "text": "以及最多执行多久。",
+    "startMs": 33299,
+    "endMs": 34607,
+    "timestampMs": 33299,
+    "confidence": 1
+  },
+  {
+    "text": "传统做法通常是调用 child process，",
+    "startMs": 35807,
+    "endMs": 39822,
+    "timestampMs": 35807,
+    "confidence": 1
+  },
+  {
+    "text": "启动系统里的 bash，",
+    "startMs": 39822,
+    "endMs": 41742,
+    "timestampMs": 39822,
+    "confidence": 1
+  },
+  {
+    "text": "再用容器或权限隔离它。",
+    "startMs": 41742,
+    "endMs": 43487,
+    "timestampMs": 41742,
+    "confidence": 1
+  },
+  {
+    "text": "这个方案当然能工作，但它把问题推给了操作系统。",
+    "startMs": 43487,
+    "endMs": 47153,
+    "timestampMs": 43487,
+    "confidence": 1
+  },
+  {
+    "text": "宿主文件系统是否暴露，",
+    "startMs": 47153,
+    "endMs": 48898,
+    "timestampMs": 47153,
+    "confidence": 1
+  },
+  {
+    "text": "命令是否存在，",
+    "startMs": 48898,
+    "endMs": 49945,
+    "timestampMs": 48898,
+    "confidence": 1
+  },
+  {
+    "text": "Windows 和 Linux 的行为是否一致，",
+    "startMs": 49945,
+    "endMs": 53960,
+    "timestampMs": 49945,
+    "confidence": 1
+  },
+  {
+    "text": "进程会不会失控，",
+    "startMs": 53960,
+    "endMs": 55182,
+    "timestampMs": 53960,
+    "confidence": 1
+  },
+  {
+    "text": "都需要额外处理。",
+    "startMs": 55182,
+    "endMs": 56404,
+    "timestampMs": 55182,
+    "confidence": 1
+  },
+  {
+    "text": "对于运行在浏览器、",
+    "startMs": 56404,
+    "endMs": 57800,
+    "timestampMs": 56404,
+    "confidence": 1
+  },
+  {
+    "text": "边缘环境，",
+    "startMs": 57800,
+    "endMs": 58498,
+    "timestampMs": 57800,
+    "confidence": 1
+  },
+  {
+    "text": "或者需要大量短任务的 Agent 来说，",
+    "startMs": 58498,
+    "endMs": 61815,
+    "timestampMs": 58498,
+    "confidence": 1
+  },
+  {
+    "text": "启动真实进程也不一定合适。",
+    "startMs": 61815,
+    "endMs": 63909,
+    "timestampMs": 61815,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 的选择不同：",
+    "startMs": 63909,
+    "endMs": 66353,
+    "timestampMs": 63909,
+    "confidence": 1
+  },
+  {
+    "text": "它不启动 bash 可执行文件，",
+    "startMs": 66353,
+    "endMs": 68971,
+    "timestampMs": 66353,
+    "confidence": 1
+  },
+  {
+    "text": "而是在 JavaScript 进程内部重新实现一套足够实用、",
+    "startMs": 68971,
+    "endMs": 74033,
+    "timestampMs": 68971,
+    "confidence": 1
+  },
+  {
+    "text": "可控制的 Shell 语义。",
+    "startMs": 74033,
+    "endMs": 76302,
+    "timestampMs": 74033,
+    "confidence": 1
+  },
+  {
+    "text": "先看全局。",
+    "startMs": 77502,
+    "endMs": 78295,
+    "timestampMs": 77502,
+    "confidence": 1
+  },
+  {
+    "text": "一段脚本文本进入 Bash.exec。",
+    "startMs": 78295,
+    "endMs": 81862,
+    "timestampMs": 78295,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 会先创建一次独立的执行上下文，",
+    "startMs": 81862,
+    "endMs": 86421,
+    "timestampMs": 81862,
+    "confidence": 1
+  },
+  {
+    "text": "然后经过词法分析和递归下降解析器，",
+    "startMs": 86421,
+    "endMs": 89592,
+    "timestampMs": 86421,
+    "confidence": 1
+  },
+  {
+    "text": "生成抽象语法树，",
+    "startMs": 89592,
+    "endMs": 90979,
+    "timestampMs": 89592,
+    "confidence": 1
+  },
+  {
+    "text": "也就是 AST。",
+    "startMs": 90979,
+    "endMs": 92366,
+    "timestampMs": 90979,
+    "confidence": 1
+  },
+  {
+    "text": "解释器遍历 AST，",
+    "startMs": 92366,
+    "endMs": 94150,
+    "timestampMs": 92366,
+    "confidence": 1
+  },
+  {
+    "text": "完成变量展开、",
+    "startMs": 94150,
+    "endMs": 95339,
+    "timestampMs": 94150,
+    "confidence": 1
+  },
+  {
+    "text": "条件判断、",
+    "startMs": 95339,
+    "endMs": 96132,
+    "timestampMs": 95339,
+    "confidence": 1
+  },
+  {
+    "text": "循环、",
+    "startMs": 96132,
+    "endMs": 96582,
+    "timestampMs": 96132,
+    "confidence": 1
+  },
+  {
+    "text": "函数、",
+    "startMs": 96582,
+    "endMs": 97032,
+    "timestampMs": 96582,
+    "confidence": 1
+  },
+  {
+    "text": "管道和重定向。",
+    "startMs": 97032,
+    "endMs": 98221,
+    "timestampMs": 97032,
+    "confidence": 1
+  },
+  {
+    "text": "具体命令通过注册表找到 TypeScript 实现，",
+    "startMs": 98221,
+    "endMs": 103176,
+    "timestampMs": 98221,
+    "confidence": 1
+  },
+  {
+    "text": "所有文件操作则进入统一的文件系统接口。",
+    "startMs": 103176,
+    "endMs": 106743,
+    "timestampMs": 103176,
+    "confidence": 1
+  },
+  {
+    "text": "最后返回 stdout、",
+    "startMs": 106743,
+    "endMs": 108923,
+    "timestampMs": 106743,
+    "confidence": 1
+  },
+  {
+    "text": "stderr、",
+    "startMs": 108923,
+    "endMs": 110112,
+    "timestampMs": 108923,
+    "confidence": 1
+  },
+  {
+    "text": "exit code 和环境变量快照。",
+    "startMs": 110112,
+    "endMs": 113482,
+    "timestampMs": 110112,
+    "confidence": 1
+  },
+  {
+    "text": "可以把这条链路记成五步：",
+    "startMs": 113482,
+    "endMs": 115662,
+    "timestampMs": 113482,
+    "confidence": 1
+  },
+  {
+    "text": "输入、",
+    "startMs": 115662,
+    "endMs": 116112,
+    "timestampMs": 115662,
+    "confidence": 1
+  },
+  {
+    "text": "解析、",
+    "startMs": 116112,
+    "endMs": 116562,
+    "timestampMs": 116112,
+    "confidence": 1
+  },
+  {
+    "text": "语法树、",
+    "startMs": 116562,
+    "endMs": 117156,
+    "timestampMs": 116562,
+    "confidence": 1
+  },
+  {
+    "text": "解释执行、",
+    "startMs": 117156,
+    "endMs": 117949,
+    "timestampMs": 117156,
+    "confidence": 1
+  },
+  {
+    "text": "输出。",
+    "startMs": 117949,
+    "endMs": 118131,
+    "timestampMs": 117949,
+    "confidence": 1
+  },
+  {
+    "text": "为什么一定要有解析器？",
+    "startMs": 119331,
+    "endMs": 121186,
+    "timestampMs": 119331,
+    "confidence": 1
+  },
+  {
+    "text": "因为 Shell 不是把空格切开就能执行。",
+    "startMs": 121186,
+    "endMs": 124896,
+    "timestampMs": 121186,
+    "confidence": 1
+  },
+  {
+    "text": "引号会改变展开规则，",
+    "startMs": 124896,
+    "endMs": 126566,
+    "timestampMs": 124896,
+    "confidence": 1
+  },
+  {
+    "text": "美元符号可能代表变量、",
+    "startMs": 126566,
+    "endMs": 128421,
+    "timestampMs": 126566,
+    "confidence": 1
+  },
+  {
+    "text": "算术或者命令替换，",
+    "startMs": 128421,
+    "endMs": 129905,
+    "timestampMs": 128421,
+    "confidence": 1
+  },
+  {
+    "text": "管道和与或运算符还决定控制流。",
+    "startMs": 129905,
+    "endMs": 132502,
+    "timestampMs": 129905,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 的 Lexer 先把原始字符变成带有行列信息的 Token。",
+    "startMs": 132502,
+    "endMs": 139552,
+    "timestampMs": 132502,
+    "confidence": 1
+  },
+  {
+    "text": "递归下降 Parser 再按照 Shell 语法，",
+    "startMs": 139552,
+    "endMs": 144004,
+    "timestampMs": 139552,
+    "confidence": 1
+  },
+  {
+    "text": "把简单命令、",
+    "startMs": 144004,
+    "endMs": 144932,
+    "timestampMs": 144004,
+    "confidence": 1
+  },
+  {
+    "text": "管道、",
+    "startMs": 144932,
+    "endMs": 145382,
+    "timestampMs": 144932,
+    "confidence": 1
+  },
+  {
+    "text": "if、",
+    "startMs": 145382,
+    "endMs": 145832,
+    "timestampMs": 145382,
+    "confidence": 1
+  },
+  {
+    "text": "for、",
+    "startMs": 145832,
+    "endMs": 146388,
+    "timestampMs": 145832,
+    "confidence": 1
+  },
+  {
+    "text": "while、",
+    "startMs": 146388,
+    "endMs": 147316,
+    "timestampMs": 146388,
+    "confidence": 1
+  },
+  {
+    "text": "case、",
+    "startMs": 147316,
+    "endMs": 148058,
+    "timestampMs": 147316,
+    "confidence": 1
+  },
+  {
+    "text": "函数、",
+    "startMs": 148058,
+    "endMs": 148508,
+    "timestampMs": 148058,
+    "confidence": 1
+  },
+  {
+    "text": "子 Shell 和重定向组织成 AST。",
+    "startMs": 148508,
+    "endMs": 152032,
+    "timestampMs": 148508,
+    "confidence": 1
+  },
+  {
+    "text": "比如屏幕上的循环，",
+    "startMs": 152032,
+    "endMs": 153517,
+    "timestampMs": 152032,
+    "confidence": 1
+  },
+  {
+    "text": "不再是一串字符串，",
+    "startMs": 153517,
+    "endMs": 155001,
+    "timestampMs": 153517,
+    "confidence": 1
+  },
+  {
+    "text": "而是一棵包含循环变量、",
+    "startMs": 155001,
+    "endMs": 156856,
+    "timestampMs": 155001,
+    "confidence": 1
+  },
+  {
+    "text": "Glob、",
+    "startMs": 156856,
+    "endMs": 157598,
+    "timestampMs": 156856,
+    "confidence": 1
+  },
+  {
+    "text": "命令节点和管道节点的树。",
+    "startMs": 157598,
+    "endMs": 159638,
+    "timestampMs": 157598,
+    "confidence": 1
+  },
+  {
+    "text": "解析阶段还限制输入大小、",
+    "startMs": 159638,
+    "endMs": 161679,
+    "timestampMs": 159638,
+    "confidence": 1
+  },
+  {
+    "text": "Token 数量和嵌套深度，",
+    "startMs": 161679,
+    "endMs": 164091,
+    "timestampMs": 161679,
+    "confidence": 1
+  },
+  {
+    "text": "避免恶意文本在真正执行之前就耗尽资源。",
+    "startMs": 164091,
+    "endMs": 167193,
+    "timestampMs": 164091,
+    "confidence": 1
+  },
+  {
+    "text": "拿到 AST 之后，解释器才开始真正工作。",
+    "startMs": 168393,
+    "endMs": 171677,
+    "timestampMs": 168393,
+    "confidence": 1
+  },
+  {
+    "text": "它维护当前目录、",
+    "startMs": 171677,
+    "endMs": 172887,
+    "timestampMs": 171677,
+    "confidence": 1
+  },
+  {
+    "text": "环境变量、",
+    "startMs": 172887,
+    "endMs": 173578,
+    "timestampMs": 172887,
+    "confidence": 1
+  },
+  {
+    "text": "函数、",
+    "startMs": 173578,
+    "endMs": 174028,
+    "timestampMs": 173578,
+    "confidence": 1
+  },
+  {
+    "text": "局部作用域、",
+    "startMs": 174028,
+    "endMs": 174892,
+    "timestampMs": 174028,
+    "confidence": 1
+  },
+  {
+    "text": "Shell 选项和上一次退出码。",
+    "startMs": 174892,
+    "endMs": 177485,
+    "timestampMs": 174892,
+    "confidence": 1
+  },
+  {
+    "text": "执行一个简单命令之前，",
+    "startMs": 177485,
+    "endMs": 179213,
+    "timestampMs": 177485,
+    "confidence": 1
+  },
+  {
+    "text": "要依次处理别名、",
+    "startMs": 179213,
+    "endMs": 180423,
+    "timestampMs": 179213,
+    "confidence": 1
+  },
+  {
+    "text": "波浪号、",
+    "startMs": 180423,
+    "endMs": 180942,
+    "timestampMs": 180423,
+    "confidence": 1
+  },
+  {
+    "text": "参数展开、",
+    "startMs": 180942,
+    "endMs": 181633,
+    "timestampMs": 180942,
+    "confidence": 1
+  },
+  {
+    "text": "命令替换、",
+    "startMs": 181633,
+    "endMs": 182324,
+    "timestampMs": 181633,
+    "confidence": 1
+  },
+  {
+    "text": "算术展开、",
+    "startMs": 182324,
+    "endMs": 183016,
+    "timestampMs": 182324,
+    "confidence": 1
+  },
+  {
+    "text": "字段分割和 Glob。",
+    "startMs": 183016,
+    "endMs": 184744,
+    "timestampMs": 183016,
+    "confidence": 1
+  },
+  {
+    "text": "这里最难的不是把功能做出来，",
+    "startMs": 184744,
+    "endMs": 186991,
+    "timestampMs": 184744,
+    "confidence": 1
+  },
+  {
+    "text": "而是让细节接近真实 Bash。",
+    "startMs": 186991,
+    "endMs": 189411,
+    "timestampMs": 186991,
+    "confidence": 1
+  },
+  {
+    "text": "比如双引号里的变量不能随便分词；",
+    "startMs": 189411,
+    "endMs": 192003,
+    "timestampMs": 189411,
+    "confidence": 1
+  },
+  {
+    "text": "管道里的命令通常运行在类似子 Shell 的状态里，",
+    "startMs": 192003,
+    "endMs": 196324,
+    "timestampMs": 192003,
+    "confidence": 1
+  },
+  {
+    "text": "变量修改不能泄漏回父环境；",
+    "startMs": 196324,
+    "endMs": 198398,
+    "timestampMs": 196324,
+    "confidence": 1
+  },
+  {
+    "text": "开启 pipefail 后，",
+    "startMs": 198398,
+    "endMs": 200645,
+    "timestampMs": 198398,
+    "confidence": 1
+  },
+  {
+    "text": "管道退出码又要取最右侧的失败命令。",
+    "startMs": 200645,
+    "endMs": 203410,
+    "timestampMs": 200645,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 把这些逻辑拆到 expansion、",
+    "startMs": 203410,
+    "endMs": 207904,
+    "timestampMs": 203410,
+    "confidence": 1
+  },
+  {
+    "text": "pipeline execution、",
+    "startMs": 207904,
+    "endMs": 211015,
+    "timestampMs": 207904,
+    "confidence": 1
+  },
+  {
+    "text": "redirections、",
+    "startMs": 211015,
+    "endMs": 213089,
+    "timestampMs": 211015,
+    "confidence": 1
+  },
+  {
+    "text": "control flow 等模块中，",
+    "startMs": 213089,
+    "endMs": 216028,
+    "timestampMs": 213089,
+    "confidence": 1
+  },
+  {
+    "text": "而 Interpreter 负责统一调度。",
+    "startMs": 216028,
+    "endMs": 219380,
+    "timestampMs": 216028,
+    "confidence": 1
+  },
+  {
+    "text": "在真实 Shell 里，",
+    "startMs": 220580,
+    "endMs": 222231,
+    "timestampMs": 220580,
+    "confidence": 1
+  },
+  {
+    "text": "grep、",
+    "startMs": 222231,
+    "endMs": 222832,
+    "timestampMs": 222231,
+    "confidence": 1
+  },
+  {
+    "text": "cat 和 sed 往往是独立的可执行文件。",
+    "startMs": 222832,
+    "endMs": 225985,
+    "timestampMs": 222832,
+    "confidence": 1
+  },
+  {
+    "text": "在 JustBash 里，",
+    "startMs": 225985,
+    "endMs": 227786,
+    "timestampMs": 225985,
+    "confidence": 1
+  },
+  {
+    "text": "它们是注册在 Command Registry 里的 TypeScript Command。",
+    "startMs": 227786,
+    "endMs": 234542,
+    "timestampMs": 227786,
+    "confidence": 1
+  },
+  {
+    "text": "每个命令接收参数和 CommandContext。",
+    "startMs": 234542,
+    "endMs": 238145,
+    "timestampMs": 234542,
+    "confidence": 1
+  },
+  {
+    "text": "上下文提供 stdin、",
+    "startMs": 238145,
+    "endMs": 239796,
+    "timestampMs": 238145,
+    "confidence": 1
+  },
+  {
+    "text": "当前目录、",
+    "startMs": 239796,
+    "endMs": 240397,
+    "timestampMs": 239796,
+    "confidence": 1
+  },
+  {
+    "text": "环境变量、",
+    "startMs": 240397,
+    "endMs": 240997,
+    "timestampMs": 240397,
+    "confidence": 1
+  },
+  {
+    "text": "文件系统、",
+    "startMs": 240997,
+    "endMs": 241598,
+    "timestampMs": 240997,
+    "confidence": 1
+  },
+  {
+    "text": "网络能力，",
+    "startMs": 241598,
+    "endMs": 242198,
+    "timestampMs": 241598,
+    "confidence": 1
+  },
+  {
+    "text": "以及执行子命令的入口。",
+    "startMs": 242198,
+    "endMs": 243700,
+    "timestampMs": 242198,
+    "confidence": 1
+  },
+  {
+    "text": "命令返回结构化结果：",
+    "startMs": 243700,
+    "endMs": 245051,
+    "timestampMs": 243700,
+    "confidence": 1
+  },
+  {
+    "text": "stdout、",
+    "startMs": 245051,
+    "endMs": 245952,
+    "timestampMs": 245051,
+    "confidence": 1
+  },
+  {
+    "text": "stderr 和 exit code。",
+    "startMs": 245952,
+    "endMs": 248654,
+    "timestampMs": 245952,
+    "confidence": 1
+  },
+  {
+    "text": "这样的好处是命令天然跨平台，也很容易测试。",
+    "startMs": 248654,
+    "endMs": 251506,
+    "timestampMs": 248654,
+    "confidence": 1
+  },
+  {
+    "text": "你还可以用 defineCommand 注册自己的工具。",
+    "startMs": 251506,
+    "endMs": 255560,
+    "timestampMs": 251506,
+    "confidence": 1
+  },
+  {
+    "text": "它会自动参与管道和重定向，",
+    "startMs": 255560,
+    "endMs": 257361,
+    "timestampMs": 255560,
+    "confidence": 1
+  },
+  {
+    "text": "不需要伪装成系统二进制文件。",
+    "startMs": 257361,
+    "endMs": 259313,
+    "timestampMs": 257361,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 最关键的抽象之一，",
+    "startMs": 260513,
+    "endMs": 263310,
+    "timestampMs": 260513,
+    "confidence": 1
+  },
+  {
+    "text": "是 IFileSystem。",
+    "startMs": 263310,
+    "endMs": 265448,
+    "timestampMs": 263310,
+    "confidence": 1
+  },
+  {
+    "text": "命令不会直接调用 Node 的 fs，",
+    "startMs": 265448,
+    "endMs": 268409,
+    "timestampMs": 265448,
+    "confidence": 1
+  },
+  {
+    "text": "而是依赖 readFile、",
+    "startMs": 268409,
+    "endMs": 270548,
+    "timestampMs": 268409,
+    "confidence": 1
+  },
+  {
+    "text": "writeFile、",
+    "startMs": 270548,
+    "endMs": 272028,
+    "timestampMs": 270548,
+    "confidence": 1
+  },
+  {
+    "text": "stat、",
+    "startMs": 272028,
+    "endMs": 272686,
+    "timestampMs": 272028,
+    "confidence": 1
+  },
+  {
+    "text": "mkdir、",
+    "startMs": 272686,
+    "endMs": 273509,
+    "timestampMs": 272686,
+    "confidence": 1
+  },
+  {
+    "text": "readdir、",
+    "startMs": 273509,
+    "endMs": 274661,
+    "timestampMs": 273509,
+    "confidence": 1
+  },
+  {
+    "text": "软链接等统一接口。",
+    "startMs": 274661,
+    "endMs": 275977,
+    "timestampMs": 274661,
+    "confidence": 1
+  },
+  {
+    "text": "默认的 InMemoryFs 完全位于内存，",
+    "startMs": 275977,
+    "endMs": 279431,
+    "timestampMs": 275977,
+    "confidence": 1
+  },
+  {
+    "text": "宿主磁盘对它来说根本不存在。",
+    "startMs": 279431,
+    "endMs": 281570,
+    "timestampMs": 279431,
+    "confidence": 1
+  },
+  {
+    "text": "OverlayFs 可以读取真实目录，",
+    "startMs": 281570,
+    "endMs": 284531,
+    "timestampMs": 281570,
+    "confidence": 1
+  },
+  {
+    "text": "但把修改保留在内存，",
+    "startMs": 284531,
+    "endMs": 286012,
+    "timestampMs": 284531,
+    "confidence": 1
+  },
+  {
+    "text": "适合让 Agent 检查代码而不破坏工作区。",
+    "startMs": 286012,
+    "endMs": 289466,
+    "timestampMs": 286012,
+    "confidence": 1
+  },
+  {
+    "text": "ReadWriteFs 才会把写操作落到指定目录，",
+    "startMs": 289466,
+    "endMs": 293414,
+    "timestampMs": 289466,
+    "confidence": 1
+  },
+  {
+    "text": "所以它必须指向专门的沙箱工作区。",
+    "startMs": 293414,
+    "endMs": 295882,
+    "timestampMs": 293414,
+    "confidence": 1
+  },
+  {
+    "text": "MountableFs 则能把多个文件系统挂载到不同路径。",
+    "startMs": 295882,
+    "endMs": 300488,
+    "timestampMs": 295882,
+    "confidence": 1
+  },
+  {
+    "text": "注意一个容易忽略的细节：",
+    "startMs": 300488,
+    "endMs": 302298,
+    "timestampMs": 300488,
+    "confidence": 1
+  },
+  {
+    "text": "每次 exec 的 Shell 状态相互隔离，",
+    "startMs": 302298,
+    "endMs": 305917,
+    "timestampMs": 302298,
+    "confidence": 1
+  },
+  {
+    "text": "但文件系统可以共享。",
+    "startMs": 305917,
+    "endMs": 307397,
+    "timestampMs": 305917,
+    "confidence": 1
+  },
+  {
+    "text": "因此上一次命令写出的文件，下一次依然能够读取。",
+    "startMs": 307397,
+    "endMs": 310852,
+    "timestampMs": 307397,
+    "confidence": 1
+  },
+  {
+    "text": "再看最有 Shell 味道的部分：管道。",
+    "startMs": 312052,
+    "endMs": 315409,
+    "timestampMs": 312052,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 会按顺序执行管道节点，",
+    "startMs": 315409,
+    "endMs": 318953,
+    "timestampMs": 315409,
+    "confidence": 1
+  },
+  {
+    "text": "把上一个命令的 stdout 变成下一个命令的 stdin；",
+    "startMs": 318953,
+    "endMs": 324361,
+    "timestampMs": 318953,
+    "confidence": 1
+  },
+  {
+    "text": "普通竖线不会吞掉 stderr，",
+    "startMs": 324361,
+    "endMs": 327159,
+    "timestampMs": 324361,
+    "confidence": 1
+  },
+  {
+    "text": "而竖线加与号会把两者合并。",
+    "startMs": 327159,
+    "endMs": 329397,
+    "timestampMs": 327159,
+    "confidence": 1
+  },
+  {
+    "text": "为了支持压缩包等二进制数据，",
+    "startMs": 329397,
+    "endMs": 331822,
+    "timestampMs": 329397,
+    "confidence": 1
+  },
+  {
+    "text": "内部管道不是靠内容猜编码，",
+    "startMs": 331822,
+    "endMs": 334060,
+    "timestampMs": 331822,
+    "confidence": 1
+  },
+  {
+    "text": "而是由生产者声明输出类型，",
+    "startMs": 334060,
+    "endMs": 336298,
+    "timestampMs": 334060,
+    "confidence": 1
+  },
+  {
+    "text": "再以字节形态向后传递。",
+    "startMs": 336298,
+    "endMs": 338163,
+    "timestampMs": 336298,
+    "confidence": 1
+  },
+  {
+    "text": "重定向模块则把大于号、",
+    "startMs": 338163,
+    "endMs": 340028,
+    "timestampMs": 338163,
+    "confidence": 1
+  },
+  {
+    "text": "追加、",
+    "startMs": 340028,
+    "endMs": 340478,
+    "timestampMs": 340028,
+    "confidence": 1
+  },
+  {
+    "text": "标准错误和输入文件映射到文件系统操作。",
+    "startMs": 340478,
+    "endMs": 343835,
+    "timestampMs": 340478,
+    "confidence": 1
+  },
+  {
+    "text": "与此同时，",
+    "startMs": 343835,
+    "endMs": 344581,
+    "timestampMs": 343835,
+    "confidence": 1
+  },
+  {
+    "text": "解释器记录每个环节的 PIPESTATUS，",
+    "startMs": 344581,
+    "endMs": 348498,
+    "timestampMs": 344581,
+    "confidence": 1
+  },
+  {
+    "text": "并根据 pipefail 决定最终退出码。",
+    "startMs": 348498,
+    "endMs": 352228,
+    "timestampMs": 348498,
+    "confidence": 1
+  },
+  {
+    "text": "换句话说，",
+    "startMs": 352228,
+    "endMs": 352974,
+    "timestampMs": 352228,
+    "confidence": 1
+  },
+  {
+    "text": "屏幕上看似简单的一条命令，",
+    "startMs": 352974,
+    "endMs": 355212,
+    "timestampMs": 352974,
+    "confidence": 1
+  },
+  {
+    "text": "内部其实是一张带类型和状态的异步数据流图。",
+    "startMs": 355212,
+    "endMs": 358865,
+    "timestampMs": 355212,
+    "confidence": 1
+  },
+  {
+    "text": "虚拟实现不等于绝对安全，",
+    "startMs": 360065,
+    "endMs": 362213,
+    "timestampMs": 360065,
+    "confidence": 1
+  },
+  {
+    "text": "所以 JustBash 采用分层防御。",
+    "startMs": 362213,
+    "endMs": 365728,
+    "timestampMs": 362213,
+    "confidence": 1
+  },
+  {
+    "text": "第一层是能力最小化：",
+    "startMs": 365728,
+    "endMs": 367486,
+    "timestampMs": 365728,
+    "confidence": 1
+  },
+  {
+    "text": "网络默认关闭，",
+    "startMs": 367486,
+    "endMs": 368657,
+    "timestampMs": 367486,
+    "confidence": 1
+  },
+  {
+    "text": "curl 只有在宿主提供网络配置时才出现，",
+    "startMs": 368657,
+    "endMs": 372563,
+    "timestampMs": 368657,
+    "confidence": 1
+  },
+  {
+    "text": "而且可以限制 URL 前缀和 HTTP 方法。",
+    "startMs": 372563,
+    "endMs": 376859,
+    "timestampMs": 372563,
+    "confidence": 1
+  },
+  {
+    "text": "第二层是资源限制，",
+    "startMs": 376859,
+    "endMs": 378421,
+    "timestampMs": 376859,
+    "confidence": 1
+  },
+  {
+    "text": "包括命令数量、",
+    "startMs": 378421,
+    "endMs": 379593,
+    "timestampMs": 378421,
+    "confidence": 1
+  },
+  {
+    "text": "循环次数、",
+    "startMs": 379593,
+    "endMs": 380374,
+    "timestampMs": 379593,
+    "confidence": 1
+  },
+  {
+    "text": "调用深度、",
+    "startMs": 380374,
+    "endMs": 381155,
+    "timestampMs": 380374,
+    "confidence": 1
+  },
+  {
+    "text": "解析深度和最大输出。",
+    "startMs": 381155,
+    "endMs": 382912,
+    "timestampMs": 381155,
+    "confidence": 1
+  },
+  {
+    "text": "第三层是数据结构防御。",
+    "startMs": 382912,
+    "endMs": 384865,
+    "timestampMs": 382912,
+    "confidence": 1
+  },
+  {
+    "text": "环境变量等用户可控键使用 Map 或无原型对象，",
+    "startMs": 384865,
+    "endMs": 389357,
+    "timestampMs": 384865,
+    "confidence": 1
+  },
+  {
+    "text": "减少原型污染。",
+    "startMs": 389357,
+    "endMs": 390528,
+    "timestampMs": 389357,
+    "confidence": 1
+  },
+  {
+    "text": "可选的 JavaScript 和 Python 运行时默认关闭，",
+    "startMs": 390528,
+    "endMs": 396582,
+    "timestampMs": 390528,
+    "confidence": 1
+  },
+  {
+    "text": "因为它们会扩大攻击面。",
+    "startMs": 396582,
+    "endMs": 398535,
+    "timestampMs": 396582,
+    "confidence": 1
+  },
+  {
+    "text": "还有 defense in depth，",
+    "startMs": 398535,
+    "endMs": 402245,
+    "timestampMs": 398535,
+    "confidence": 1
+  },
+  {
+    "text": "在执行期间屏蔽危险的 JavaScript 全局对象。",
+    "startMs": 402245,
+    "endMs": 407322,
+    "timestampMs": 402245,
+    "confidence": 1
+  },
+  {
+    "text": "但项目也明确说明：",
+    "startMs": 407322,
+    "endMs": 408884,
+    "timestampMs": 407322,
+    "confidence": 1
+  },
+  {
+    "text": "它是第二道防线，",
+    "startMs": 408884,
+    "endMs": 410251,
+    "timestampMs": 408884,
+    "confidence": 1
+  },
+  {
+    "text": "不能替代真正的进程、",
+    "startMs": 410251,
+    "endMs": 412009,
+    "timestampMs": 410251,
+    "confidence": 1
+  },
+  {
+    "text": "容器或平台级隔离。",
+    "startMs": 412009,
+    "endMs": 413571,
+    "timestampMs": 412009,
+    "confidence": 1
+  },
+  {
+    "text": "理解 JustBash 也要理解它的边界。",
+    "startMs": 414771,
+    "endMs": 418469,
+    "timestampMs": 414771,
+    "confidence": 1
+  },
+  {
+    "text": "它追求的是对 Agent 常用工作流足够高的 Bash 兼容度，",
+    "startMs": 418469,
+    "endMs": 424202,
+    "timestampMs": 418469,
+    "confidence": 1
+  },
+  {
+    "text": "而不是复刻完整 Linux 内核。",
+    "startMs": 424202,
+    "endMs": 427160,
+    "timestampMs": 424202,
+    "confidence": 1
+  },
+  {
+    "text": "文件操作、",
+    "startMs": 427160,
+    "endMs": 427900,
+    "timestampMs": 427160,
+    "confidence": 1
+  },
+  {
+    "text": "文本处理、",
+    "startMs": 427900,
+    "endMs": 428639,
+    "timestampMs": 427900,
+    "confidence": 1
+  },
+  {
+    "text": "JSON、",
+    "startMs": 428639,
+    "endMs": 429379,
+    "timestampMs": 428639,
+    "confidence": 1
+  },
+  {
+    "text": "CSV、",
+    "startMs": 429379,
+    "endMs": 429934,
+    "timestampMs": 429379,
+    "confidence": 1
+  },
+  {
+    "text": "SQLite、",
+    "startMs": 429934,
+    "endMs": 431043,
+    "timestampMs": 429934,
+    "confidence": 1
+  },
+  {
+    "text": "压缩和常见脚本语法已经覆盖得很广，",
+    "startMs": 431043,
+    "endMs": 434002,
+    "timestampMs": 431043,
+    "confidence": 1
+  },
+  {
+    "text": "但命令和边缘行为仍然需要逐项实现。",
+    "startMs": 434002,
+    "endMs": 436961,
+    "timestampMs": 434002,
+    "confidence": 1
+  },
+  {
+    "text": "项目大量使用 comparison tests，",
+    "startMs": 436961,
+    "endMs": 441214,
+    "timestampMs": 436961,
+    "confidence": 1
+  },
+  {
+    "text": "把同一个脚本同时交给真实 Bash 和 JustBash，",
+    "startMs": 441214,
+    "endMs": 446391,
+    "timestampMs": 441214,
+    "confidence": 1
+  },
+  {
+    "text": "再比较标准输出、",
+    "startMs": 446391,
+    "endMs": 447686,
+    "timestampMs": 446391,
+    "confidence": 1
+  },
+  {
+    "text": "标准错误和退出码。",
+    "startMs": 447686,
+    "endMs": 449165,
+    "timestampMs": 447686,
+    "confidence": 1
+  },
+  {
+    "text": "这种测试方式很重要，",
+    "startMs": 449165,
+    "endMs": 450829,
+    "timestampMs": 449165,
+    "confidence": 1
+  },
+  {
+    "text": "因为 Shell 的兼容性经常藏在引号、",
+    "startMs": 450829,
+    "endMs": 454342,
+    "timestampMs": 450829,
+    "confidence": 1
+  },
+  {
+    "text": "重定向顺序和错误处理里。",
+    "startMs": 454342,
+    "endMs": 456376,
+    "timestampMs": 454342,
+    "confidence": 1
+  },
+  {
+    "text": "使用时应根据任务选择能力，",
+    "startMs": 456376,
+    "endMs": 458595,
+    "timestampMs": 456376,
+    "confidence": 1
+  },
+  {
+    "text": "并把 Beta 状态纳入风险评估。",
+    "startMs": 458595,
+    "endMs": 461554,
+    "timestampMs": 458595,
+    "confidence": 1
+  },
+  {
+    "text": "实际接入时，可以把过程缩成三步。",
+    "startMs": 462754,
+    "endMs": 465604,
+    "timestampMs": 462754,
+    "confidence": 1
+  },
+  {
+    "text": "第一，",
+    "startMs": 465604,
+    "endMs": 466054,
+    "timestampMs": 465604,
+    "confidence": 1
+  },
+  {
+    "text": "创建 Bash 实例，",
+    "startMs": 466054,
+    "endMs": 468089,
+    "timestampMs": 466054,
+    "confidence": 1
+  },
+  {
+    "text": "把允许读取的文件、",
+    "startMs": 468089,
+    "endMs": 469718,
+    "timestampMs": 468089,
+    "confidence": 1
+  },
+  {
+    "text": "初始环境和工作目录交给它。",
+    "startMs": 469718,
+    "endMs": 472160,
+    "timestampMs": 469718,
+    "confidence": 1
+  },
+  {
+    "text": "第二，只注册任务真正需要的命令，并设置执行上限。",
+    "startMs": 472160,
+    "endMs": 476435,
+    "timestampMs": 472160,
+    "confidence": 1
+  },
+  {
+    "text": "如果需要联网，再显式添加受限的网络配置。",
+    "startMs": 476435,
+    "endMs": 480099,
+    "timestampMs": 476435,
+    "confidence": 1
+  },
+  {
+    "text": "第三，",
+    "startMs": 480099,
+    "endMs": 480549,
+    "timestampMs": 480099,
+    "confidence": 1
+  },
+  {
+    "text": "把模型生成的脚本交给 exec，",
+    "startMs": 480549,
+    "endMs": 483602,
+    "timestampMs": 480549,
+    "confidence": 1
+  },
+  {
+    "text": "读取结构化结果，",
+    "startMs": 483602,
+    "endMs": 485027,
+    "timestampMs": 483602,
+    "confidence": 1
+  },
+  {
+    "text": "而不是让模型直接接触宿主终端。",
+    "startMs": 485027,
+    "endMs": 487876,
+    "timestampMs": 485027,
+    "confidence": 1
+  },
+  {
+    "text": "对于代码分析，可以使用只读 OverlayFs；",
+    "startMs": 487876,
+    "endMs": 492355,
+    "timestampMs": 487876,
+    "confidence": 1
+  },
+  {
+    "text": "对于临时数据处理，用 InMemoryFs；",
+    "startMs": 492355,
+    "endMs": 496426,
+    "timestampMs": 492355,
+    "confidence": 1
+  },
+  {
+    "text": "只有确实需要写盘时，",
+    "startMs": 496426,
+    "endMs": 498257,
+    "timestampMs": 496426,
+    "confidence": 1
+  },
+  {
+    "text": "才提供范围严格的 ReadWriteFs。",
+    "startMs": 498257,
+    "endMs": 502328,
+    "timestampMs": 498257,
+    "confidence": 1
+  },
+  {
+    "text": "能力越少，系统越容易推理，也越容易审计。",
+    "startMs": 502328,
+    "endMs": 505703,
+    "timestampMs": 502328,
+    "confidence": 1
+  },
+  {
+    "text": "总结一下。",
+    "startMs": 506903,
+    "endMs": 507552,
+    "timestampMs": 506903,
+    "confidence": 1
+  },
+  {
+    "text": "JustBash 的核心不是在 JavaScript 里启动 Bash，",
+    "startMs": 507552,
+    "endMs": 513233,
+    "timestampMs": 507552,
+    "confidence": 1
+  },
+  {
+    "text": "而是把 Shell 拆成解析器、",
+    "startMs": 513233,
+    "endMs": 515668,
+    "timestampMs": 513233,
+    "confidence": 1
+  },
+  {
+    "text": "AST、",
+    "startMs": 515668,
+    "endMs": 516155,
+    "timestampMs": 515668,
+    "confidence": 1
+  },
+  {
+    "text": "解释器、",
+    "startMs": 516155,
+    "endMs": 516642,
+    "timestampMs": 516155,
+    "confidence": 1
+  },
+  {
+    "text": "命令注册表和虚拟文件系统，",
+    "startMs": 516642,
+    "endMs": 518590,
+    "timestampMs": 516642,
+    "confidence": 1
+  },
+  {
+    "text": "再把网络与资源控制交还给宿主。",
+    "startMs": 518590,
+    "endMs": 520862,
+    "timestampMs": 518590,
+    "confidence": 1
+  },
+  {
+    "text": "这让 Bash 从一个不可预测的外部进程，",
+    "startMs": 520862,
+    "endMs": 524108,
+    "timestampMs": 520862,
+    "confidence": 1
+  },
+  {
+    "text": "变成可测试、",
+    "startMs": 524108,
+    "endMs": 524920,
+    "timestampMs": 524108,
+    "confidence": 1
+  },
+  {
+    "text": "可组合、",
+    "startMs": 524920,
+    "endMs": 525407,
+    "timestampMs": 524920,
+    "confidence": 1
+  },
+  {
+    "text": "可限制的 Agent 能力。",
+    "startMs": 525407,
+    "endMs": 527517,
+    "timestampMs": 525407,
+    "confidence": 1
+  },
+  {
+    "text": "如果你正在设计 Agent 的工具层，",
+    "startMs": 527517,
+    "endMs": 530439,
+    "timestampMs": 527517,
+    "confidence": 1
+  },
+  {
+    "text": "不妨把问题从“怎样安全地执行任意命令”，",
+    "startMs": 530439,
+    "endMs": 533523,
+    "timestampMs": 530439,
+    "confidence": 1
+  },
+  {
+    "text": "改成“怎样只提供任务真正需要的 Shell 语义”。",
+    "startMs": 533523,
+    "endMs": 537580,
+    "timestampMs": 533523,
+    "confidence": 1
+  },
+  {
+    "text": "这就是 JustBash 最值得借鉴的地方。",
+    "startMs": 537580,
+    "endMs": 540989,
+    "timestampMs": 537580,
+    "confidence": 1
+  }
+]

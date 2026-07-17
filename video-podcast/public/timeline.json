@@ -1,0 +1,225 @@
+{
+  "durationMs": 541689,
+  "chapters": [
+    {
+      "id": "intro",
+      "number": "00",
+      "title": "JustBash 到底是什么？",
+      "shortTitle": "开场",
+      "visual": "intro",
+      "narration": "如果你正在给 AI Agent 增加工具能力，很快就会遇到一个熟悉的问题：模型很擅长写 Shell 命令，但我们真的要把它写出的每一行都交给操作系统执行吗？今天这期视频，我们来拆解 JustBash。它是一个用 TypeScript 实现的虚拟 Bash 环境，拥有内存文件系统、常用 Unix 命令、管道、重定向和脚本语法。更重要的是，它让宿主程序可以明确决定 Shell 能看见什么、能访问什么，以及最多执行多久。",
+      "startMs": 0,
+      "audioStartMs": 500,
+      "durationMs": 34107,
+      "endMs": 35307,
+      "audioFile": "audio/intro.m4a"
+    },
+    {
+      "id": "problem",
+      "number": "01",
+      "title": "为什么不直接启动 Bash？",
+      "shortTitle": "问题",
+      "visual": "problem",
+      "bullets": [
+        "宿主文件系统暴露",
+        "子进程与平台差异",
+        "资源难以精确控制"
+      ],
+      "narration": "传统做法通常是调用 child process，启动系统里的 bash，再用容器或权限隔离它。这个方案当然能工作，但它把问题推给了操作系统。宿主文件系统是否暴露，命令是否存在，Windows 和 Linux 的行为是否一致，进程会不会失控，都需要额外处理。对于运行在浏览器、边缘环境，或者需要大量短任务的 Agent 来说，启动真实进程也不一定合适。JustBash 的选择不同：它不启动 bash 可执行文件，而是在 JavaScript 进程内部重新实现一套足够实用、可控制的 Shell 语义。",
+      "startMs": 35307,
+      "audioStartMs": 35807,
+      "durationMs": 40495,
+      "endMs": 77002,
+      "audioFile": "audio/problem.m4a"
+    },
+    {
+      "id": "flow",
+      "number": "02",
+      "title": "一条命令的完整旅程",
+      "shortTitle": "总览",
+      "visual": "flow",
+      "bullets": [
+        "Input",
+        "Lexer / Parser",
+        "AST",
+        "Interpreter",
+        "Output"
+      ],
+      "code": "echo 'hello' | tr a-z A-Z > result.txt",
+      "narration": "先看全局。一段脚本文本进入 Bash.exec。JustBash 会先创建一次独立的执行上下文，然后经过词法分析和递归下降解析器，生成抽象语法树，也就是 AST。解释器遍历 AST，完成变量展开、条件判断、循环、函数、管道和重定向。具体命令通过注册表找到 TypeScript 实现，所有文件操作则进入统一的文件系统接口。最后返回 stdout、stderr、exit code 和环境变量快照。可以把这条链路记成五步：输入、解析、语法树、解释执行、输出。",
+      "startMs": 77002,
+      "audioStartMs": 77502,
+      "durationMs": 40629,
+      "endMs": 118831,
+      "audioFile": "audio/flow.m4a"
+    },
+    {
+      "id": "parser",
+      "number": "03",
+      "title": "解析器：先理解，再执行",
+      "shortTitle": "解析器与 AST",
+      "visual": "ast",
+      "code": "for f in *.log; do\n  grep ERROR \"$f\" | head -n 3\ndone",
+      "bullets": [
+        "Lexer 产生 Token",
+        "递归下降 Parser",
+        "结构化 AST",
+        "输入 / Token / 深度限制"
+      ],
+      "narration": "为什么一定要有解析器？因为 Shell 不是把空格切开就能执行。引号会改变展开规则，美元符号可能代表变量、算术或者命令替换，管道和与或运算符还决定控制流。JustBash 的 Lexer 先把原始字符变成带有行列信息的 Token。递归下降 Parser 再按照 Shell 语法，把简单命令、管道、if、for、while、case、函数、子 Shell 和重定向组织成 AST。比如屏幕上的循环，不再是一串字符串，而是一棵包含循环变量、Glob、命令节点和管道节点的树。解析阶段还限制输入大小、Token 数量和嵌套深度，避免恶意文本在真正执行之前就耗尽资源。",
+      "startMs": 118831,
+      "audioStartMs": 119331,
+      "durationMs": 47862,
+      "endMs": 167893,
+      "audioFile": "audio/parser.m4a"
+    },
+    {
+      "id": "interpreter",
+      "number": "04",
+      "title": "解释器：还原 Bash 语义",
+      "shortTitle": "解释执行",
+      "visual": "interpreter",
+      "bullets": [
+        "变量与引号展开",
+        "控制流与函数",
+        "子 Shell 状态隔离",
+        "退出码与 PIPESTATUS"
+      ],
+      "narration": "拿到 AST 之后，解释器才开始真正工作。它维护当前目录、环境变量、函数、局部作用域、Shell 选项和上一次退出码。执行一个简单命令之前，要依次处理别名、波浪号、参数展开、命令替换、算术展开、字段分割和 Glob。这里最难的不是把功能做出来，而是让细节接近真实 Bash。比如双引号里的变量不能随便分词；管道里的命令通常运行在类似子 Shell 的状态里，变量修改不能泄漏回父环境；开启 pipefail 后，管道退出码又要取最右侧的失败命令。JustBash 把这些逻辑拆到 expansion、pipeline execution、redirections、control flow 等模块中，而 Interpreter 负责统一调度。",
+      "startMs": 167893,
+      "audioStartMs": 168393,
+      "durationMs": 50987,
+      "endMs": 220080,
+      "audioFile": "audio/interpreter.m4a"
+    },
+    {
+      "id": "commands",
+      "number": "05",
+      "title": "命令不是进程，而是函数",
+      "shortTitle": "命令系统",
+      "visual": "command",
+      "code": "const upper = defineCommand('upper', async (_, ctx) => ({\n  stdout: decodeBytesToUtf8(ctx.stdin).toUpperCase(),\n  stderr: '', exitCode: 0\n}));",
+      "bullets": [
+        "Command Registry",
+        "参数 + stdin + 上下文",
+        "结构化执行结果",
+        "可注册自定义命令"
+      ],
+      "narration": "在真实 Shell 里，grep、cat 和 sed 往往是独立的可执行文件。在 JustBash 里，它们是注册在 Command Registry 里的 TypeScript Command。每个命令接收参数和 CommandContext。上下文提供 stdin、当前目录、环境变量、文件系统、网络能力，以及执行子命令的入口。命令返回结构化结果：stdout、stderr 和 exit code。这样的好处是命令天然跨平台，也很容易测试。你还可以用 defineCommand 注册自己的工具。它会自动参与管道和重定向，不需要伪装成系统二进制文件。",
+      "startMs": 220080,
+      "audioStartMs": 220580,
+      "durationMs": 38733,
+      "endMs": 260013,
+      "audioFile": "audio/commands.m4a"
+    },
+    {
+      "id": "filesystem",
+      "number": "06",
+      "title": "文件系统：真正的隔离边界",
+      "shortTitle": "虚拟文件系统",
+      "visual": "filesystem",
+      "bullets": [
+        "InMemoryFs",
+        "OverlayFs",
+        "ReadWriteFs",
+        "MountableFs"
+      ],
+      "narration": "JustBash 最关键的抽象之一，是 IFileSystem。命令不会直接调用 Node 的 fs，而是依赖 readFile、writeFile、stat、mkdir、readdir、软链接等统一接口。默认的 InMemoryFs 完全位于内存，宿主磁盘对它来说根本不存在。OverlayFs 可以读取真实目录，但把修改保留在内存，适合让 Agent 检查代码而不破坏工作区。ReadWriteFs 才会把写操作落到指定目录，所以它必须指向专门的沙箱工作区。MountableFs 则能把多个文件系统挂载到不同路径。注意一个容易忽略的细节：每次 exec 的 Shell 状态相互隔离，但文件系统可以共享。因此上一次命令写出的文件，下一次依然能够读取。",
+      "startMs": 260013,
+      "audioStartMs": 260513,
+      "durationMs": 50339,
+      "endMs": 311552,
+      "audioFile": "audio/filesystem.m4a"
+    },
+    {
+      "id": "pipeline",
+      "number": "07",
+      "title": "管道与重定向如何流动？",
+      "shortTitle": "数据流",
+      "visual": "pipeline",
+      "code": "cat access.log | grep ' 500 ' | wc -l > errors.txt",
+      "bullets": [
+        "stdout → stdin",
+        "stderr 独立流动",
+        "字节透明",
+        "> / >> / 2> / |&"
+      ],
+      "narration": "再看最有 Shell 味道的部分：管道。JustBash 会按顺序执行管道节点，把上一个命令的 stdout 变成下一个命令的 stdin；普通竖线不会吞掉 stderr，而竖线加与号会把两者合并。为了支持压缩包等二进制数据，内部管道不是靠内容猜编码，而是由生产者声明输出类型，再以字节形态向后传递。重定向模块则把大于号、追加、标准错误和输入文件映射到文件系统操作。与此同时，解释器记录每个环节的 PIPESTATUS，并根据 pipefail 决定最终退出码。换句话说，屏幕上看似简单的一条命令，内部其实是一张带类型和状态的异步数据流图。",
+      "startMs": 311552,
+      "audioStartMs": 312052,
+      "durationMs": 46813,
+      "endMs": 359565,
+      "audioFile": "audio/pipeline.m4a"
+    },
+    {
+      "id": "security",
+      "number": "08",
+      "title": "安全不是一个开关",
+      "shortTitle": "安全模型",
+      "visual": "security",
+      "bullets": [
+        "默认无网络",
+        "URL 与方法白名单",
+        "执行 / 输出 / 深度限制",
+        "Defense in Depth"
+      ],
+      "narration": "虚拟实现不等于绝对安全，所以 JustBash 采用分层防御。第一层是能力最小化：网络默认关闭，curl 只有在宿主提供网络配置时才出现，而且可以限制 URL 前缀和 HTTP 方法。第二层是资源限制，包括命令数量、循环次数、调用深度、解析深度和最大输出。第三层是数据结构防御。环境变量等用户可控键使用 Map 或无原型对象，减少原型污染。可选的 JavaScript 和 Python 运行时默认关闭，因为它们会扩大攻击面。还有 defense in depth，在执行期间屏蔽危险的 JavaScript 全局对象。但项目也明确说明：它是第二道防线，不能替代真正的进程、容器或平台级隔离。",
+      "startMs": 359565,
+      "audioStartMs": 360065,
+      "durationMs": 53506,
+      "endMs": 414271,
+      "audioFile": "audio/security.m4a"
+    },
+    {
+      "id": "boundary",
+      "number": "09",
+      "title": "它像 Bash，但不是操作系统",
+      "shortTitle": "能力边界",
+      "visual": "boundary",
+      "bullets": [
+        "高频语法优先",
+        "命令按需实现",
+        "真实 Bash 对比测试",
+        "Beta：不要假设完全兼容"
+      ],
+      "narration": "理解 JustBash 也要理解它的边界。它追求的是对 Agent 常用工作流足够高的 Bash 兼容度，而不是复刻完整 Linux 内核。文件操作、文本处理、JSON、CSV、SQLite、压缩和常见脚本语法已经覆盖得很广，但命令和边缘行为仍然需要逐项实现。项目大量使用 comparison tests，把同一个脚本同时交给真实 Bash 和 JustBash，再比较标准输出、标准错误和退出码。这种测试方式很重要，因为 Shell 的兼容性经常藏在引号、重定向顺序和错误处理里。使用时应根据任务选择能力，并把 Beta 状态纳入风险评估。",
+      "startMs": 414271,
+      "audioStartMs": 414771,
+      "durationMs": 46783,
+      "endMs": 462254,
+      "audioFile": "audio/boundary.m4a"
+    },
+    {
+      "id": "demo",
+      "number": "10",
+      "title": "把它接进 Agent，只需三步",
+      "shortTitle": "接入方式",
+      "visual": "demo",
+      "code": "const bash = new Bash({\n  files: {'/data/app.log': log},\n  commands: ['cat', 'grep', 'wc'],\n  executionLimits: {maxCommandCount: 100}\n});\nconst result = await bash.exec(script);",
+      "bullets": [
+        "准备文件与能力",
+        "限制命令与资源",
+        "执行并返回结构化结果"
+      ],
+      "narration": "实际接入时，可以把过程缩成三步。第一，创建 Bash 实例，把允许读取的文件、初始环境和工作目录交给它。第二，只注册任务真正需要的命令，并设置执行上限。如果需要联网，再显式添加受限的网络配置。第三，把模型生成的脚本交给 exec，读取结构化结果，而不是让模型直接接触宿主终端。对于代码分析，可以使用只读 OverlayFs；对于临时数据处理，用 InMemoryFs；只有确实需要写盘时，才提供范围严格的 ReadWriteFs。能力越少，系统越容易推理，也越容易审计。",
+      "startMs": 462254,
+      "audioStartMs": 462754,
+      "durationMs": 42949,
+      "endMs": 506403,
+      "audioFile": "audio/demo.m4a"
+    },
+    {
+      "id": "outro",
+      "number": "11",
+      "title": "总结：把 Shell 变成可组合能力",
+      "shortTitle": "总结",
+      "visual": "outro",
+      "narration": "总结一下。JustBash 的核心不是在 JavaScript 里启动 Bash，而是把 Shell 拆成解析器、AST、解释器、命令注册表和虚拟文件系统，再把网络与资源控制交还给宿主。这让 Bash 从一个不可预测的外部进程，变成可测试、可组合、可限制的 Agent 能力。如果你正在设计 Agent 的工具层，不妨把问题从“怎样安全地执行任意命令”，改成“怎样只提供任务真正需要的 Shell 语义”。这就是 JustBash 最值得借鉴的地方。",
+      "startMs": 506403,
+      "audioStartMs": 506903,
+      "durationMs": 34086,
+      "endMs": 541689,
+      "audioFile": "audio/outro.m4a"
+    }
+  ]
+}
