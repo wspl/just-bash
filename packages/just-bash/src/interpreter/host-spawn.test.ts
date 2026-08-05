@@ -357,3 +357,83 @@ describe("hostSpawn hook", () => {
     expect(result.exitCode).toBe(7);
   });
 });
+
+describe("preferHostSpawn routing", () => {
+  function makeHarness(
+    hostSpawnResult: (command: string) => import("../types.js").ExecResult,
+  ) {
+    const bash = new Bash();
+    const state = (bash as unknown as { state: InterpreterState }).state;
+    const commands = (bash as unknown as { commands: Map<string, Command> })
+      .commands;
+    const fs = (
+      bash as unknown as { fs: import("../fs/interface.js").IFileSystem }
+    ).fs;
+    let spawnCalls = 0;
+    let portableCalls = 0;
+    commands.set("scan", {
+      name: "scan",
+      preferHostSpawn: true,
+      execute: async () => {
+        portableCalls += 1;
+        return { stdout: "portable\n", stderr: "", exitCode: 0 };
+      },
+    });
+    const interpreter = new Interpreter(
+      {
+        fs,
+        commands,
+        limits: resolveLimits({}),
+        exec: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+        hostSpawn: async (command) => {
+          spawnCalls += 1;
+          return hostSpawnResult(command);
+        },
+      },
+      state,
+    );
+    return {
+      interpreter,
+      counts: () => ({ spawnCalls, portableCalls }),
+    };
+  }
+
+  it("routes a preferHostSpawn command to the host binary when it exists", async () => {
+    const harness = makeHarness(() => ({
+      stdout: "real\n",
+      stderr: "",
+      exitCode: 0,
+    }));
+    const result = await harness.interpreter.executeScript(
+      parse("scan target"),
+    );
+    expect(result.stdout).toBe("real\n");
+    expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 0 });
+  });
+
+  it("falls back to the portable implementation when the host has no binary, and remembers", async () => {
+    const harness = makeHarness((command) => ({
+      stdout: "",
+      stderr: `${command}: command not found\n`,
+      exitCode: 127,
+    }));
+    const first = await harness.interpreter.executeScript(parse("scan a"));
+    expect(first.stdout).toBe("portable\n");
+    const second = await harness.interpreter.executeScript(parse("scan b"));
+    expect(second.stdout).toBe("portable\n");
+    // Only the first invocation pays the probe; the miss is remembered.
+    expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 2 });
+  });
+
+  it("treats a real exit 127 without a spawn-error marker as the command's own result", async () => {
+    const harness = makeHarness(() => ({
+      stdout: "",
+      stderr: "scan: internal failure\n",
+      exitCode: 127,
+    }));
+    const result = await harness.interpreter.executeScript(parse("scan a"));
+    expect(result.exitCode).toBe(127);
+    expect(result.stderr).toBe("scan: internal failure\n");
+    expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 0 });
+  });
+});

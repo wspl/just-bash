@@ -419,6 +419,30 @@ export async function executeExternalCommand(
       const exportedEnv = buildExportedEnv();
       const usesGroupStdin = stdin === "" && ctx.state.groupStdin !== undefined;
       const effectiveStdin = stdin || ctx.state.groupStdin || "";
+      if (
+        registered.preferHostSpawn &&
+        !ctx.hostSpawnUnavailable?.has(commandName)
+      ) {
+        const spawned = await ctx.hostSpawn(commandName, args, {
+          cwd: ctx.state.cwd,
+          env: exportedEnv,
+          stdin: effectiveStdin,
+          stdinProvided:
+            stdin !== "" || usesGroupStdin || ctx.state.pipelineStdinProvided,
+          redirections: ctx.currentRedirections,
+        });
+        if (!isHostSpawnNotFound(spawned)) {
+          if (usesGroupStdin && shouldConsumeGroupStdin(commandName)) {
+            ctx.state.groupStdin = "";
+          }
+          return spawned;
+        }
+        // Host has no such binary: remember per interpreter and fall through
+        // to the registered (portable) implementation. Group stdin stays
+        // intact for that fallback.
+        ctx.hostSpawnUnavailable ??= new Set();
+        ctx.hostSpawnUnavailable.add(commandName);
+      }
       const cmdCtx: CommandContext = {
         fs: ctx.fs,
         cwd: ctx.state.cwd,
@@ -609,4 +633,18 @@ export async function executeExternalCommand(
       ctx.state.groupStdin = "";
     }
   }
+}
+
+/**
+ * Whether a hostSpawn result means "the host has no such binary" rather than
+ * the command running and failing. hostSpawn has no dedicated spawn-error
+ * channel: embedders map a failed spawn to exit 127 with a stderr line naming
+ * the spawn error (ENOENT) or "command not found". Real binaries essentially
+ * never produce that combination themselves, and a false positive only costs
+ * one detour through the portable implementation.
+ */
+function isHostSpawnNotFound(result: ExecResult): boolean {
+  return (
+    result.exitCode === 127 && /ENOENT|command not found/.test(result.stderr)
+  );
 }
