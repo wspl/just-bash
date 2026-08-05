@@ -644,7 +644,7 @@ export async function executeExternalCommand(
  * one detour through the portable implementation.
  */
 function isHostSpawnNotFound(result: ExecResult): boolean {
-  return (
-    result.exitCode === 127 && /ENOENT|command not found/.test(result.stderr)
-  );
+  // Spawn-error phrasing differs per runtime: Node reports ENOENT, Bun says
+  // 'Executable not found in $PATH', demi's mapping says 'command not found'.
+  return result.exitCode === 127 && /ENOENT|not found/i.test(result.stderr);
 }
