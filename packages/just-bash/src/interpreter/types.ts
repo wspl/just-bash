@@ -468,6 +468,8 @@ export interface InterpreterContext {
   rejectTimedPipelines?: boolean;
   /** Redirections for the simple command currently being dispatched to hostSpawn. */
   currentRedirections?: HostSpawnRedirection[];
+  /** Commands whose preferHostSpawn probe failed (host has no such binary); per interpreter. */
+  hostSpawnUnavailable?: Set<string>;
   /** Optional host-backed job control for background statements and jobs/wait builtins. */
   jobControl?: JobControlHooks;
   /**

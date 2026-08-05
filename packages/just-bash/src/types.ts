@@ -250,6 +250,16 @@ export interface Command {
    * host-extension commands with stdin-backed arguments usually do.
    */
   consumesStdin?: boolean;
+  /**
+   * Try the host's real binary first via ctx.hostSpawn; this registered
+   * implementation is the fallback when the host cannot spawn the command
+   * (spawn failure / command not found). For CPU-heavy tree scanners the
+   * in-process portable implementation burns the embedder's main thread for
+   * minutes on large trees, while a real process runs off-thread — but hosts
+   * without the binary must keep working, so the routing is decided per
+   * interpreter at first use, not statically. Ignored without ctx.hostSpawn.
+   */
+  preferHostSpawn?: boolean;
   execute(args: string[], ctx: CommandContext): Promise<ExecResult>;
 }
 
