@@ -322,6 +322,11 @@ export interface HostSpawnRedirection {
   target: string;
 }
 
+export interface HostCwdHooks {
+  enter(path: string): Promise<void>;
+  snapshot(): Promise<{ restore(): void }>;
+}
+
 export interface JobControlHooks {
   startBackground?: (statement: StatementNode) => Promise<ExecResult | null>;
   jobs?: (args: string[]) => Promise<ExecResult>;
@@ -468,8 +473,12 @@ export interface InterpreterContext {
   rejectTimedPipelines?: boolean;
   /** Redirections for the simple command currently being dispatched to hostSpawn. */
   currentRedirections?: HostSpawnRedirection[];
-  /** Commands whose preferHostSpawn probe failed (host has no such binary); per interpreter. */
-  hostSpawnUnavailable?: Set<string>;
+  /**
+   * Host-backed cwd inode. `cd` / `pushd` / `popd` call `enter` while the
+   * directory still exists; spawn uses the fd the Host holds, not the path
+   * string. `snapshot`/`restore` keep a subshell from closing the parent's fd.
+   */
+  hostCwd?: HostCwdHooks;
   /** Optional host-backed job control for background statements and jobs/wait builtins. */
   jobControl?: JobControlHooks;
   /**

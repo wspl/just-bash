@@ -166,6 +166,8 @@ export interface InterpreterOptions {
   hostSpawn?: InterpreterContext["hostSpawn"];
   /** Command resolution hook for `command -v` / `type`. */
   hostResolveCommand?: InterpreterContext["hostResolveCommand"];
+  /** Host-backed cwd inode (cd/pushd/popd + subshell snapshot). */
+  hostCwd?: InterpreterContext["hostCwd"];
   /** Optional host-backed job control hooks for background statements and jobs/wait builtins. */
   jobControl?: InterpreterContext["jobControl"];
 }
@@ -217,6 +219,7 @@ export class Interpreter {
       rejectTimedPipelines: options.rejectTimedPipelines ?? false,
       hostSpawn: options.hostSpawn,
       hostResolveCommand: options.hostResolveCommand,
+      hostCwd: options.hostCwd,
       jobControl: options.jobControl,
     };
   }

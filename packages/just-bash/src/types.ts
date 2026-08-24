@@ -11,10 +11,23 @@ export interface FeatureCoverageWriter {
   hit(feature: string): void;
 }
 
+export type SpawnErrorKind =
+  | "executable_not_found"
+  | "permission_denied"
+  | "cwd_unusable"
+  | "is_directory"
+  | "other";
+
 export interface ExecResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  /**
+   * Set only when the host never exec'd the binary. preferHostSpawn falls
+   * back to the registered implementation solely for `executable_not_found`.
+   * Absence means the command ran (or the host did not classify the failure).
+   */
+  spawnError?: { kind: SpawnErrorKind };
   /** The final environment variables after execution (only set by BashEnv.exec) */
   env?: Record<string, string>;
   /**
@@ -252,12 +265,10 @@ export interface Command {
   consumesStdin?: boolean;
   /**
    * Try the host's real binary first via ctx.hostSpawn; this registered
-   * implementation is the fallback when the host cannot spawn the command
-   * (spawn failure / command not found). For CPU-heavy tree scanners the
-   * in-process portable implementation burns the embedder's main thread for
-   * minutes on large trees, while a real process runs off-thread — but hosts
-   * without the binary must keep working, so the routing is decided per
-   * interpreter at first use, not statically. Ignored without ctx.hostSpawn.
+   * implementation is the fallback only when hostSpawn reports
+   * `spawnError.kind === "executable_not_found"`. Other spawn failures
+   * (cwd, EACCES, a binary that itself exits 127) are the command result.
+   * Ignored without ctx.hostSpawn.
    */
   preferHostSpawn?: boolean;
   execute(args: string[], ctx: CommandContext): Promise<ExecResult>;

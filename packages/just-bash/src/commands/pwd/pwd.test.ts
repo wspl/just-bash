@@ -57,4 +57,18 @@ describe("pwd", () => {
     const result = await env.exec("pwd ignored args");
     expect(result.stdout).toBe("/test\n");
   });
+
+  it("pwd -P fails when the cwd path is gone", async () => {
+    const env = new Bash();
+    const result = await env.exec(`
+      mkdir -p /tmp/pwd-gone
+      cd /tmp/pwd-gone
+      rm -rf /tmp/pwd-gone
+      pwd -P
+    `);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory",
+    );
+  });
 });

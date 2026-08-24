@@ -767,6 +767,7 @@ async function expandPart(
       // modify parent environment (e.g., aliases defined inside $() should not leak)
       const savedEnv = new Map(ctx.state.env);
       const savedCwd = ctx.state.cwd;
+      const savedHostCwd = await ctx.hostCwd?.snapshot();
       // Suppress verbose mode (set -v) inside command substitutions
       // bash only prints verbose output for the main script
       const savedSuppressVerbose = ctx.state.suppressVerbose;
@@ -777,6 +778,7 @@ async function expandPart(
         const exitCode = result.exitCode;
         ctx.state.env = savedEnv;
         ctx.state.cwd = savedCwd;
+        savedHostCwd?.restore();
         ctx.state.suppressVerbose = savedSuppressVerbose;
         // Store the exit code for $?
         ctx.state.lastExitCode = exitCode;
@@ -801,6 +803,7 @@ async function expandPart(
         // Restore environment on error as well
         ctx.state.env = savedEnv;
         ctx.state.cwd = savedCwd;
+        savedHostCwd?.restore();
         ctx.state.bashPid = savedBashPid;
         ctx.substitutionDepth = savedDepth;
         ctx.state.suppressVerbose = savedSuppressVerbose;

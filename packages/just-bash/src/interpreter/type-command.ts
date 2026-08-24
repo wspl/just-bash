@@ -21,7 +21,7 @@ import type { IFileSystem } from "../fs/interface.js";
 import type { CommandRegistry, ExecResult } from "../types.js";
 import { result } from "./helpers/result.js";
 import { SHELL_BUILTINS, SHELL_KEYWORDS } from "./helpers/shell-constants.js";
-import type { InterpreterState } from "./types.js";
+import type { InterpreterContext, InterpreterState } from "./types.js";
 
 /**
  * Context needed for type command operations
@@ -30,6 +30,7 @@ export interface TypeCommandContext {
   state: InterpreterState;
   fs: IFileSystem;
   commands: CommandRegistry;
+  hostResolveCommand?: InterpreterContext["hostResolveCommand"];
 }
 
 /**
@@ -180,8 +181,11 @@ export async function handleType(
     }
 
     // Registered commands are an embedder capability boundary and must not be
-    // shadowed by shell functions.
-    const hasRegistered = ctx.commands.has(name);
+    // shadowed by shell functions. preferHostSpawn names are PATH files when
+    // the host has them — describe that file, not the portable fallback.
+    const registered = ctx.commands.get(name);
+    const hasRegistered =
+      registered !== undefined && registered.preferHostSpawn !== true;
     if (hasRegistered && (showAll || !foundAny)) {
       if (pathOnly) {
         // Do nothing - registered commands have no host path contract
@@ -438,7 +442,10 @@ export async function handleCommandV(
       } else {
         stdout += `${name}\n`;
       }
-    } else if (ctx.commands.has(name)) {
+    } else if (
+      ctx.commands.has(name) &&
+      ctx.commands.get(name)?.preferHostSpawn !== true
+    ) {
       if (verboseDescribe) {
         stdout += `${name} is a registered command\n`;
       } else {
@@ -510,6 +517,14 @@ export async function findFirstInPath(
   ctx: TypeCommandContext,
   name: string,
 ): Promise<string | null> {
+  if (ctx.hostResolveCommand) {
+    const env: Record<string, string> = {};
+    for (const [key, value] of ctx.state.env) env[key] = value;
+    const resolved = await ctx.hostResolveCommand(name, env);
+    if (resolved?.kind === "file") return resolved.value;
+    return null;
+  }
+
   // If name contains /, it's a path - check if it exists and is executable
   if (name.includes("/")) {
     const resolvedPath = ctx.fs.resolvePath(ctx.state.cwd, name);

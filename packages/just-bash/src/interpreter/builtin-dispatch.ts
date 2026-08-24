@@ -192,7 +192,7 @@ export async function dispatchBuiltin(
     return await handlePushd(ctx, args);
   }
   if (commandName === "popd") {
-    return handlePopd(ctx, args);
+    return await handlePopd(ctx, args);
   }
   if (commandName === "dirs") {
     return handleDirs(ctx, args);
@@ -419,10 +419,7 @@ export async function executeExternalCommand(
       const exportedEnv = buildExportedEnv();
       const usesGroupStdin = stdin === "" && ctx.state.groupStdin !== undefined;
       const effectiveStdin = stdin || ctx.state.groupStdin || "";
-      if (
-        registered.preferHostSpawn &&
-        !ctx.hostSpawnUnavailable?.has(commandName)
-      ) {
+      if (registered.preferHostSpawn) {
         const spawned = await ctx.hostSpawn(commandName, args, {
           cwd: ctx.state.cwd,
           env: exportedEnv,
@@ -437,11 +434,6 @@ export async function executeExternalCommand(
           }
           return spawned;
         }
-        // Host has no such binary: remember per interpreter and fall through
-        // to the registered (portable) implementation. Group stdin stays
-        // intact for that fallback.
-        ctx.hostSpawnUnavailable ??= new Set();
-        ctx.hostSpawnUnavailable.add(commandName);
       }
       const cmdCtx: CommandContext = {
         fs: ctx.fs,
@@ -636,15 +628,9 @@ export async function executeExternalCommand(
 }
 
 /**
- * Whether a hostSpawn result means "the host has no such binary" rather than
- * the command running and failing. hostSpawn has no dedicated spawn-error
- * channel: embedders map a failed spawn to exit 127 with a stderr line naming
- * the spawn error (ENOENT) or "command not found". Real binaries essentially
- * never produce that combination themselves, and a false positive only costs
- * one detour through the portable implementation.
+ * Portable fallback is allowed only when the host classified the failure as
+ * "no such binary". Stderr text is not a spawn-error channel.
  */
 function isHostSpawnNotFound(result: ExecResult): boolean {
-  // Spawn-error phrasing differs per runtime: Node reports ENOENT, Bun says
-  // 'Executable not found in $PATH', demi's mapping says 'command not found'.
-  return result.exitCode === 127 && /ENOENT|not found/i.test(result.stderr);
+  return result.spawnError?.kind === "executable_not_found";
 }

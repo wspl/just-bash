@@ -1,6 +1,6 @@
 {
   "name": "@demicodes/just-bash",
-  "version": "3.1.0-demi.3",
+  "version": "3.1.0-demi.4",
   "description": "A simulated bash environment with virtual filesystem",
   "repository": {
     "type": "git",

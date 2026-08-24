@@ -119,6 +119,7 @@ async function executeCommandSubstitutionFromString(
   ctx.state.bashPid = ctx.state.nextVirtualPid++;
   const savedEnv = new Map(ctx.state.env);
   const savedCwd = ctx.state.cwd;
+  const savedHostCwd = await ctx.hostCwd?.snapshot();
   const savedSuppressVerbose = ctx.state.suppressVerbose;
   ctx.state.suppressVerbose = true;
 
@@ -128,6 +129,7 @@ async function executeCommandSubstitutionFromString(
     const exitCode = result.exitCode;
     ctx.state.env = savedEnv;
     ctx.state.cwd = savedCwd;
+    savedHostCwd?.restore();
     ctx.state.suppressVerbose = savedSuppressVerbose;
     ctx.state.lastExitCode = exitCode;
     ctx.state.env.set("?", String(exitCode));
@@ -140,6 +142,7 @@ async function executeCommandSubstitutionFromString(
   } catch (error) {
     ctx.state.env = savedEnv;
     ctx.state.cwd = savedCwd;
+    savedHostCwd?.restore();
     ctx.state.bashPid = savedBashPid;
     ctx.state.suppressVerbose = savedSuppressVerbose;
     if (error instanceof ExecutionLimitError) {

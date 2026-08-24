@@ -102,5 +102,28 @@ describe("cd builtin", () => {
       expect(result.stderr).toContain("Not a directory");
       expect(result.exitCode).toBe(1);
     });
+
+    it("should error when HOME is unset", async () => {
+      const env = new Bash({ env: { HOME: "/tmp" } });
+      const result = await env.exec("unset HOME; cd");
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("HOME not set");
+    });
+  });
+
+  describe("deleted cwd", () => {
+    it("should land in the parent path on cd ..", async () => {
+      const env = new Bash();
+      const result = await env.exec(`
+        mkdir -p /tmp/parent/child
+        cd /tmp/parent/child
+        rm -rf /tmp/parent/child
+        cd ..
+        echo exit:$?
+        echo PWD=$PWD
+      `);
+      expect(result.stdout).toContain("exit:0");
+      expect(result.stdout).toContain("PWD=/tmp/parent");
+    });
   });
 });
