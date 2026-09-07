@@ -93,7 +93,7 @@ import {
   testResult,
   throwExecutionLimit,
 } from "./helpers/result.js";
-import { isPosixSpecialBuiltin } from "./helpers/shell-constants.js";
+import { isPosixSpecialBuiltin, SHELL_BUILTINS } from "./helpers/shell-constants.js";
 import {
   isWordLiteralMatch,
   parseRwFdContent,
@@ -125,6 +125,12 @@ export type {
   InterpreterContext,
   InterpreterState,
 } from "./types.js";
+
+export interface ScriptObserver {
+  onPipelineStart(): void;
+  onPipelineOutput(stdout: string, stderr: string): void;
+  onCommandStart(redirections: HostSpawnRedirection[] | undefined): void;
+}
 
 export interface InterpreterOptions {
   fs: IFileSystem;
@@ -282,7 +288,7 @@ export class Interpreter {
     return env;
   }
 
-  async executeScript(node: ScriptNode): Promise<ExecResult> {
+  async executeScript(node: ScriptNode, observer?: ScriptObserver): Promise<ExecResult> {
     this.assertDefenseContext("execution");
 
     let stdout = "";
@@ -306,7 +312,7 @@ export class Interpreter {
 
     for (const statement of node.statements) {
       try {
-        const result = await this.executeStatement(statement);
+        const result = await this.executeStatement(statement, observer);
         // Decode each statement's stdout to text via its explicit `stdoutKind`
         // before concatenating. A script can interleave text-shaped statements
         // (sed, awk — ö as U+00F6) with byte-shaped ones (grep | head — ö as
@@ -447,7 +453,7 @@ export class Interpreter {
     );
   }
 
-  private async executeStatement(node: StatementNode): Promise<ExecResult> {
+  private async executeStatement(node: StatementNode, observer?: ScriptObserver): Promise<ExecResult> {
     this.assertDefenseContext("statement");
 
     // Check for abort signal (cooperative cancellation by timeout command)
@@ -510,7 +516,9 @@ export class Interpreter {
       if (operator === "&&" && exitCode !== 0) continue;
       if (operator === "||" && exitCode === 0) continue;
 
-      const result = await this.executePipeline(pipeline);
+      observer?.onPipelineStart();
+      const result = await this.executePipeline(pipeline, observer);
+      observer?.onPipelineOutput(decodedTextFromResult(result), result.stderr);
       // Decode each pipeline's stdout to text via its explicit `stdoutKind`
       // before concatenating, so a statement that joins text-shaped and
       // byte-shaped pipelines with && / || does not interleave raw byte and
@@ -555,25 +563,26 @@ export class Interpreter {
     return result(stdout, stderr, exitCode);
   }
 
-  private async executePipeline(node: PipelineNode): Promise<ExecResult> {
+  private async executePipeline(node: PipelineNode, observer?: ScriptObserver): Promise<ExecResult> {
     if (node.timed && this.ctx.rejectTimedPipelines) {
       throw new Error("Unsupported shell syntax: timed pipelines");
     }
     return executePipelineHelper(this.ctx, node, (cmd, stdin) =>
-      this.executeCommand(cmd, stdin),
+      this.executeCommand(cmd, stdin, node.commands.length === 1 ? observer : undefined),
     );
   }
 
   private async executeCommand(
     node: CommandNode,
     stdin: string,
+    observer?: ScriptObserver,
   ): Promise<ExecResult> {
     this.assertDefenseContext("command");
 
     this.ctx.coverage?.hit(`bash:cmd:${node.type}`);
     switch (node.type) {
       case "SimpleCommand":
-        return this.executeSimpleCommand(node, stdin);
+        return this.executeSimpleCommand(node, stdin, observer);
       case "If":
         return executeIf(this.ctx, node);
       case "For":
@@ -604,9 +613,10 @@ export class Interpreter {
   private async executeSimpleCommand(
     node: SimpleCommandNode,
     stdin: string,
+    observer?: ScriptObserver,
   ): Promise<ExecResult> {
     try {
-      return await this.executeSimpleCommandInner(node, stdin);
+      return await this.executeSimpleCommandInner(node, stdin, observer);
     } catch (error) {
       if (error instanceof GlobError) {
         // GlobError from failglob should return exit code 1 with error message
@@ -621,6 +631,7 @@ export class Interpreter {
   private async executeSimpleCommandInner(
     node: SimpleCommandNode,
     stdin: string,
+    observer?: ScriptObserver,
   ): Promise<ExecResult> {
     // Update currentLine for $LINENO
     if (node.line !== undefined) {
@@ -1184,6 +1195,19 @@ export class Interpreter {
       }
 
       if (shouldRunCommand) {
+        // Nested scripts and substitutions are observed only after their outer
+        // pipeline resolves. Their raw foreground output may be captured.
+        if (
+          observer &&
+          !this.ctx.state.options.xtrace &&
+          !this.ctx.state.options.verbose &&
+          !this.ctx.state.expansionStderr &&
+          !this.ctx.state.fileDescriptors?.size &&
+          (this.ctx.commands.has(commandName) ||
+            (!SHELL_BUILTINS.has(commandName) && !this.ctx.state.functions.has(commandName)))
+        ) {
+          observer.onCommandStart(this.ctx.currentRedirections);
+        }
         cmdResult = await this.runCommand(
           commandName,
           args,
