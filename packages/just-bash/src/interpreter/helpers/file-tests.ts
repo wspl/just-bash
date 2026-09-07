@@ -81,31 +81,25 @@ export async function evaluateFileTest(
     }
 
     case "-r": {
-      // Readable - check read permission bits
       if (await ctx.fs.exists(path)) {
         const stat = await ctx.fs.stat(path);
-        // Check user read bit (0o400) - in our sandboxed env, we act as owner
-        return (stat.mode & 0o400) !== 0;
+        return permissionApplies(ctx, stat, 0o400, 0o040, 0o004);
       }
       return false;
     }
 
     case "-w": {
-      // Writable - check write permission bits
       if (await ctx.fs.exists(path)) {
         const stat = await ctx.fs.stat(path);
-        // Check user write bit (0o200)
-        return (stat.mode & 0o200) !== 0;
+        return permissionApplies(ctx, stat, 0o200, 0o020, 0o002);
       }
       return false;
     }
 
     case "-x": {
-      // Executable - check execute permission bits
       if (await ctx.fs.exists(path)) {
         const stat = await ctx.fs.stat(path);
-        // Check user execute bit (0o100)
-        return (stat.mode & 0o100) !== 0;
+        return permissionApplies(ctx, stat, 0o100, 0o010, 0o001);
       }
       return false;
     }
@@ -157,19 +151,36 @@ export async function evaluateFileTest(
       return false;
     }
 
-    case "-G":
-    case "-O":
-      // Owned by effective group/user ID
-      // In virtual fs, assume user owns everything that exists
-      return ctx.fs.exists(path);
+    case "-G": {
+      try {
+        const stat = await ctx.fs.stat(path);
+        if (stat.gid === undefined) return true;
+        return stat.gid === ctx.state.virtualGid;
+      } catch {
+        return false;
+      }
+    }
+
+    case "-O": {
+      try {
+        const stat = await ctx.fs.stat(path);
+        if (stat.uid === undefined) return true;
+        return stat.uid === ctx.state.virtualUid;
+      } catch {
+        return false;
+      }
+    }
 
     case "-b":
-      // Block special file - virtual fs doesn't have these
       return false;
 
     case "-c": {
-      // Character special file
-      // In virtual fs, recognize common character devices by path
+      try {
+        const stat = await ctx.fs.lstat(path);
+        if (stat.isCharacterDevice === true) return true;
+      } catch {
+        // Fall through to the virtual-fs path allowlist.
+      }
       const charDevices = [
         "/dev/null",
         "/dev/zero",
@@ -184,8 +195,12 @@ export async function evaluateFileTest(
     }
 
     case "-p":
-      // Named pipe (FIFO) - virtual fs doesn't have these
-      return false;
+      try {
+        const stat = await ctx.fs.lstat(path);
+        return stat.isFIFO === true;
+      } catch {
+        return false;
+      }
 
     case "-S":
       // Socket - virtual fs doesn't have these
@@ -206,6 +221,19 @@ export async function evaluateFileTest(
     default:
       return false;
   }
+}
+
+function permissionApplies(
+  ctx: InterpreterContext,
+  stat: { mode: number; uid?: number; gid?: number },
+  owner: number,
+  group: number,
+  other: number,
+): boolean {
+  if (stat.uid === undefined) return (stat.mode & owner) !== 0;
+  if (stat.uid === ctx.state.virtualUid) return (stat.mode & owner) !== 0;
+  if (stat.gid === ctx.state.virtualGid) return (stat.mode & group) !== 0;
+  return (stat.mode & other) !== 0;
 }
 
 /**
@@ -264,17 +292,17 @@ export async function evaluateBinaryFileTest(
     }
 
     case "-ef": {
-      // Same file (same device and inode)
-      // In virtual fs, compare resolved canonical paths
       try {
-        // Both files must exist
+        const leftStat = await ctx.fs.stat(leftPath);
+        const rightStat = await ctx.fs.stat(rightPath);
         if (
-          !(await ctx.fs.exists(leftPath)) ||
-          !(await ctx.fs.exists(rightPath))
+          leftStat.ino !== undefined &&
+          leftStat.dev !== undefined &&
+          rightStat.ino !== undefined &&
+          rightStat.dev !== undefined
         ) {
-          return false;
+          return leftStat.ino === rightStat.ino && leftStat.dev === rightStat.dev;
         }
-        // Compare canonical paths (handles symlinks)
         const leftReal = ctx.fs.resolvePath(ctx.state.cwd, leftPath);
         const rightReal = ctx.fs.resolvePath(ctx.state.cwd, rightPath);
         return leftReal === rightReal;

@@ -84,6 +84,13 @@ export interface FsStat {
   mode: number;
   size: number;
   mtime: Date;
+  uid?: number;
+  gid?: number;
+  ino?: number;
+  dev?: number;
+  nlink?: number;
+  isCharacterDevice?: boolean;
+  isFIFO?: boolean;
 }
 
 /**

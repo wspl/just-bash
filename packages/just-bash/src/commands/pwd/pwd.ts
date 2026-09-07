@@ -22,12 +22,15 @@ export const pwdCommand: Command = {
     let pwd = ctx.cwd;
 
     if (usePhysical) {
-      // -P: resolve all symlinks to get physical path
       try {
         pwd = await ctx.fs.realpath(ctx.cwd);
       } catch {
-        // If realpath fails, fall back to current cwd
-        // This matches bash behavior
+        return {
+          stdout: "",
+          stderr:
+            "pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory\n",
+          exitCode: 1,
+        };
       }
     }
 

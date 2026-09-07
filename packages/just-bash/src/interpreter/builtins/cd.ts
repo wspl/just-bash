@@ -40,15 +40,62 @@ export async function handleCd(
   if (remainingArgs.length > 1) {
     return failure("bash: cd: too many arguments\n", 2);
   }
-  if (remainingArgs.length === 0) {
-    target = ctx.state.env.get("HOME") || "/";
-  } else if (remainingArgs[0] === "~") {
-    target = ctx.state.env.get("HOME") || "/";
+  if (remainingArgs.length === 0 || remainingArgs[0] === "~") {
+    if (!ctx.state.env.has("HOME")) {
+      return failure("bash: cd: HOME not set\n");
+    }
+    target = ctx.state.env.get("HOME") ?? "";
   } else if (remainingArgs[0] === "-") {
     target = ctx.state.previousDir;
     printPath = true; // cd - prints the new directory
   } else {
     target = remainingArgs[0];
+  }
+
+  if (target === ".") {
+    if (!(await cwdDirectoryExists(ctx))) {
+      try {
+        await ctx.hostCwd?.enter(".");
+      } catch {
+        return failure(`bash: cd: ${target}: No such file or directory\n`);
+      }
+      const nextPwd = `${ctx.state.cwd}/.`;
+      ctx.state.previousDir = ctx.state.cwd;
+      ctx.state.cwd = nextPwd;
+      ctx.state.env.set("PWD", nextPwd);
+      ctx.state.env.set("OLDPWD", ctx.state.previousDir);
+      return {
+        stdout: "",
+        stderr:
+          "cd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory\n",
+        exitCode: 0,
+      };
+    }
+  }
+
+  if (target === ".." && !(await cwdDirectoryExists(ctx))) {
+    const parent = parentDirectory(ctx.state.cwd);
+    try {
+      if (ctx.hostCwd) {
+        try {
+          await ctx.hostCwd.enter("..");
+        } catch {
+          await ctx.hostCwd.enter(parent);
+        }
+      } else {
+        const parentStat = await ctx.fs.stat(parent);
+        if (!parentStat.isDirectory) {
+          return failure(`bash: cd: ${target}: Not a directory\n`);
+        }
+      }
+    } catch {
+      return failure(`bash: cd: ${target}: No such file or directory\n`);
+    }
+    ctx.state.previousDir = ctx.state.cwd;
+    ctx.state.cwd = parent;
+    ctx.state.env.set("PWD", parent);
+    ctx.state.env.set("OLDPWD", ctx.state.previousDir);
+    return success("");
   }
 
   // CDPATH support: if target doesn't start with / or ., search CDPATH directories
@@ -108,13 +155,18 @@ export async function handleCd(
 
   let newDir = currentPath || "/";
 
-  // If -P is specified, resolve symlinks to get the physical path
   if (physical) {
     try {
       newDir = await ctx.fs.realpath(newDir);
     } catch {
-      // If realpath fails, use the logical path (matches bash behavior)
+      return failure(`bash: cd: ${target}: No such file or directory\n`);
     }
+  }
+
+  try {
+    await ctx.hostCwd?.enter(newDir);
+  } catch {
+    return failure(`bash: cd: ${target}: No such file or directory\n`);
   }
 
   ctx.state.previousDir = ctx.state.cwd;
@@ -124,4 +176,20 @@ export async function handleCd(
 
   // cd - prints the new directory
   return success(printPath ? `${newDir}\n` : "");
+}
+
+async function cwdDirectoryExists(ctx: InterpreterContext): Promise<boolean> {
+  try {
+    const stat = await ctx.fs.stat(ctx.state.cwd);
+    return stat.isDirectory;
+  } catch {
+    return false;
+  }
+}
+
+function parentDirectory(path: string): string {
+  const trimmed = path.replace(/\/+$/, "") || "/";
+  if (trimmed === "/") return "/";
+  const slash = trimmed.lastIndexOf("/");
+  return slash <= 0 ? "/" : trimmed.slice(0, slash);
 }

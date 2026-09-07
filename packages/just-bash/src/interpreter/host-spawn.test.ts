@@ -411,18 +411,43 @@ describe("preferHostSpawn routing", () => {
     expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 0 });
   });
 
-  it("falls back to the portable implementation when the host has no binary, and remembers", async () => {
+  it("falls back to the portable implementation when hostSpawn reports executable_not_found", async () => {
     const harness = makeHarness((command) => ({
       stdout: "",
       stderr: `${command}: command not found\n`,
       exitCode: 127,
+      spawnError: { kind: "executable_not_found" as const },
     }));
     const first = await harness.interpreter.executeScript(parse("scan a"));
     expect(first.stdout).toBe("portable\n");
     const second = await harness.interpreter.executeScript(parse("scan b"));
     expect(second.stdout).toBe("portable\n");
-    // Only the first invocation pays the probe; the miss is remembered.
-    expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 2 });
+    expect(harness.counts()).toEqual({ spawnCalls: 2, portableCalls: 2 });
+  });
+
+  it("does not fall back when cwd is unusable", async () => {
+    const harness = makeHarness(() => ({
+      stdout: "",
+      stderr: "posix_spawn ENOENT\n",
+      exitCode: 127,
+      spawnError: { kind: "cwd_unusable" as const },
+    }));
+    const result = await harness.interpreter.executeScript(parse("scan a"));
+    expect(result.exitCode).toBe(127);
+    expect(result.stdout).toBe("");
+    expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 0 });
+  });
+
+  it("does not fall back on 127 plus not-found stderr without spawnError", async () => {
+    const harness = makeHarness((command) => ({
+      stdout: "",
+      stderr: `${command}: command not found\n`,
+      exitCode: 127,
+    }));
+    const result = await harness.interpreter.executeScript(parse("scan a"));
+    expect(result.exitCode).toBe(127);
+    expect(result.stdout).toBe("");
+    expect(harness.counts()).toEqual({ spawnCalls: 1, portableCalls: 0 });
   });
 
   it("treats a real exit 127 without a spawn-error marker as the command's own result", async () => {

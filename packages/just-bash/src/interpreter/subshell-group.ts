@@ -60,6 +60,7 @@ export async function executeSubshell(
 
   const savedEnv = new Map(ctx.state.env);
   const savedCwd = ctx.state.cwd;
+  const savedHostCwd = await ctx.hostCwd?.snapshot();
   // Save options so subshell changes (like set -e) don't affect parent
   const savedOptions = { ...ctx.state.options };
 
@@ -166,6 +167,7 @@ export async function executeSubshell(
     ctx.state.groupStdin = savedGroupStdin;
     ctx.state.bashPid = savedBashPid;
     ctx.state.lastArg = savedLastArg;
+    savedHostCwd?.restore();
   };
 
   try {
@@ -381,6 +383,7 @@ export async function executeUserScript(
   // Save current state for restoration after script execution
   const savedEnv = new Map(ctx.state.env);
   const savedCwd = ctx.state.cwd;
+  const savedHostCwd = await ctx.hostCwd?.snapshot();
   const savedOptions = { ...ctx.state.options };
   const savedLoopDepth = ctx.state.loopDepth;
   const savedParentHasLoopContext = ctx.state.parentHasLoopContext;
@@ -422,6 +425,7 @@ export async function executeUserScript(
     ctx.state.bashPid = savedBashPid;
     ctx.state.groupStdin = savedGroupStdin;
     ctx.state.currentSource = savedSource;
+    savedHostCwd?.restore();
   };
 
   try {

@@ -98,6 +98,7 @@ export async function handlePushd(
     ctx.state.cwd = newDir;
     ctx.state.env.set("PWD", newDir);
     ctx.state.env.set("OLDPWD", oldCwd);
+    await ctx.hostCwd?.enter(newDir);
 
     const home = ctx.state.env.get("HOME") || "";
     const output = `${[newDir, ...stack].map((p) => formatPath(p, home)).join(" ")}\n`;
@@ -142,6 +143,7 @@ export async function handlePushd(
   ctx.state.cwd = resolvedDir;
   ctx.state.env.set("PWD", resolvedDir);
   ctx.state.env.set("OLDPWD", ctx.state.previousDir);
+  await ctx.hostCwd?.enter(resolvedDir);
 
   // Output the stack (pushd DOES do tilde substitution)
   const home = ctx.state.env.get("HOME") || "";
@@ -153,10 +155,10 @@ export async function handlePushd(
 /**
  * popd - Pop directory from stack and cd to it
  */
-export function handlePopd(
+export async function handlePopd(
   ctx: InterpreterContext,
   args: string[],
-): ExecResult {
+): Promise<ExecResult> {
   const stack = getStack(ctx);
 
   // Parse arguments
@@ -186,6 +188,7 @@ export function handlePopd(
   ctx.state.cwd = newDir;
   ctx.state.env.set("PWD", newDir);
   ctx.state.env.set("OLDPWD", ctx.state.previousDir);
+  await ctx.hostCwd?.enter(newDir);
 
   // Output the stack (popd DOES do tilde substitution)
   const home = ctx.state.env.get("HOME") || "";
