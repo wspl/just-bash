@@ -106,3 +106,12 @@ export function checkFdLimit(ctx: InterpreterContext): void {
     );
   }
 }
+
+/** An interpreter aggregate already encoded as pipe bytes. */
+export function byteResult(
+  stdout: string,
+  stderr: string,
+  exitCode: number,
+): ExecResult {
+  return { stdout, stdoutKind: "bytes", stderr, stderrKind: "bytes", exitCode };
+}

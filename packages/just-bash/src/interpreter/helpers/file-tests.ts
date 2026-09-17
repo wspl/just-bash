@@ -301,7 +301,9 @@ export async function evaluateBinaryFileTest(
           rightStat.ino !== undefined &&
           rightStat.dev !== undefined
         ) {
-          return leftStat.ino === rightStat.ino && leftStat.dev === rightStat.dev;
+          return (
+            leftStat.ino === rightStat.ino && leftStat.dev === rightStat.dev
+          );
         }
         const leftReal = ctx.fs.resolvePath(ctx.state.cwd, leftPath);
         const rightReal = ctx.fs.resolvePath(ctx.state.cwd, rightPath);

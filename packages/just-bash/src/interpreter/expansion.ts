@@ -1,3 +1,4 @@
+import { decodedTextFromResult } from "../encoding.js";
 /**
  * Word Expansion
  *
@@ -791,7 +792,7 @@ async function expandPart(
         }
         ctx.state.bashPid = savedBashPid;
         ctx.substitutionDepth = savedDepth;
-        const output = result.stdout.replace(/\n+$/, "");
+        const output = decodedTextFromResult(result).replace(/\n+$/, "");
         // Check string length limit for command substitution output
         checkStringLength(
           output,

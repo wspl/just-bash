@@ -1,3 +1,4 @@
+import { encodeUtf8ToBytes, latin1FromBytes } from "../../encoding.js";
 /**
  * Statement execution helpers for the interpreter.
  *
@@ -57,10 +58,14 @@ export async function executeStatements(
     }
     return {
       stdout,
-      stderr: `${stderr}${getErrorMessage(error)}\n`,
+      stdoutKind: "bytes",
+      stderrKind: "bytes",
+      stderr:
+        stderr +
+        latin1FromBytes(encodeUtf8ToBytes(`${getErrorMessage(error)}\n`)),
       exitCode: 1,
     };
   }
 
-  return { stdout, stderr, exitCode };
+  return { stdout, stdoutKind: "bytes", stderrKind: "bytes", stderr, exitCode };
 }

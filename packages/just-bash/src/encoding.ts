@@ -3,7 +3,7 @@
  *
  * Shell pipes carry bytes, not text. Internally we represent a byte buffer as
  * a JS string where `s.charCodeAt(i)` is the i-th byte (0–255), the same
- * convention as `Buffer.from(s, "latin1")`. That's a space-cheap byte buffer,
+ * Latin-1 packing convention. This is a space-cheap byte buffer,
  * but the type system can't tell it apart from a real `string`, and command
  * authors keep writing `ctx.stdin.split(...)` / `RegExp.test(ctx.stdin)` /
  * `JSON.parse(ctx.stdin)` over data that is actually UTF-8 packed in latin1.
@@ -217,4 +217,58 @@ export function bytesOutput(data: ByteString): {
     stdoutKind: "bytes",
     stdoutEncoding: "binary",
   };
+}
+
+/** Decode an explicit byte result for text consumers, retaining invalid bytes unchanged. */
+export function outputForTextConsumer<
+  T extends {
+    stdout: string;
+    stdoutKind?: OutputKind;
+    stdoutEncoding?: "binary";
+    stderr?: string;
+    stderrKind?: OutputKind;
+  },
+>(result: T): T {
+  if (result.stderr !== undefined && result.stderrKind === "bytes") {
+    const stderr = outputForTextConsumer({
+      stdout: result.stderr,
+      stdoutKind: result.stderrKind,
+    });
+    result = {
+      ...result,
+      stderr: stderr.stdout,
+      stderrKind: stderr.stdoutKind,
+    };
+  }
+  if (stdoutKind(result) === "text") return result;
+  const raw = latin1FromBytes(stdoutAsBytes(result));
+  try {
+    const bytes = Uint8Array.from(raw, (char) => char.charCodeAt(0));
+    const stdout = new TextDecoder("utf-8", {
+      fatal: true,
+      ignoreBOM: true,
+    }).decode(bytes);
+    return { ...result, stdout, stdoutKind: "text", stdoutEncoding: undefined };
+  } catch {
+    return result;
+  }
+}
+
+/** Stderr follows the same explicit text/byte contract as stdout. */
+export function stderrAsBytes(result: {
+  stderr: string;
+  stderrKind?: OutputKind;
+}): ByteString {
+  return result.stderrKind === "bytes"
+    ? unsafeBytesFromLatin1(result.stderr)
+    : encodeUtf8ToBytes(result.stderr);
+}
+
+export function decodedStderrFromResult(result: {
+  stderr: string;
+  stderrKind?: OutputKind;
+}): string {
+  return result.stderrKind === "bytes"
+    ? decodeBytesToUtf8(unsafeBytesFromLatin1(result.stderr))
+    : result.stderr;
 }

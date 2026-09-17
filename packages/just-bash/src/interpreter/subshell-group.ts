@@ -1,3 +1,8 @@
+import {
+  encodeUtf8ToBytes,
+  latin1FromBytes,
+  readBytesFrom,
+} from "../encoding.js";
 /**
  * Subshell, Group, and Script Execution
  *
@@ -27,7 +32,11 @@ import {
 } from "./errors.js";
 import { expandWord } from "./expansion.js";
 import { getErrorMessage } from "./helpers/errors.js";
-import { checkFdLimit, failure, result } from "./helpers/result.js";
+import {
+  checkFdLimit,
+  failure,
+  byteResult as result,
+} from "./helpers/result.js";
 import {
   applyRedirections,
   preOpenOutputRedirects,
@@ -125,20 +134,24 @@ export async function executeSubshell(
           .map((line) => line.replace(/^\t+/, ""))
           .join("\n");
       }
-      effectiveStdin = content;
+      effectiveStdin = latin1FromBytes(encodeUtf8ToBytes(content));
       hasInputRedirection = true;
     } else if (redir.operator === "<<<" && redir.target.type === "Word") {
-      effectiveStdin = `${await expandWord(ctx, redir.target as WordNode)}\n`;
+      effectiveStdin = latin1FromBytes(
+        encodeUtf8ToBytes(
+          `${await expandWord(ctx, redir.target as WordNode)}\n`,
+        ),
+      );
       hasInputRedirection = true;
     } else if (redir.operator === "<" && redir.target.type === "Word") {
       try {
         const target = await expandWord(ctx, redir.target as WordNode);
         const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
-        effectiveStdin = await ctx.fs.readFile(filePath);
+        effectiveStdin = latin1FromBytes(await readBytesFrom(ctx.fs, filePath));
         hasInputRedirection = true;
       } catch {
         const target = await expandWord(ctx, redir.target as WordNode);
-        return result("", `bash: ${target}: No such file or directory\n`, 1);
+        return failure(`bash: ${target}: No such file or directory\n`);
       }
     }
   }
@@ -231,7 +244,8 @@ export async function executeSubshell(
     // Apply output redirections before returning
     const bodyResult = result(
       stdout,
-      `${stderr}${getErrorMessage(error)}\n`,
+      stderr +
+        latin1FromBytes(encodeUtf8ToBytes(`${getErrorMessage(error)}\n`)),
       1,
     );
     return applyRedirections(ctx, bodyResult, node.redirections);
@@ -291,18 +305,22 @@ export async function executeGroup(
         checkFdLimit(ctx);
         ctx.state.fileDescriptors.set(fd, content);
       } else {
-        effectiveStdin = content;
+        effectiveStdin = latin1FromBytes(encodeUtf8ToBytes(content));
       }
     } else if (redir.operator === "<<<" && redir.target.type === "Word") {
-      effectiveStdin = `${await expandWord(ctx, redir.target as WordNode)}\n`;
+      effectiveStdin = latin1FromBytes(
+        encodeUtf8ToBytes(
+          `${await expandWord(ctx, redir.target as WordNode)}\n`,
+        ),
+      );
     } else if (redir.operator === "<" && redir.target.type === "Word") {
       try {
         const target = await expandWord(ctx, redir.target as WordNode);
         const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
-        effectiveStdin = await ctx.fs.readFile(filePath);
+        effectiveStdin = latin1FromBytes(await readBytesFrom(ctx.fs, filePath));
       } catch {
         const target = await expandWord(ctx, redir.target as WordNode);
-        return result("", `bash: ${target}: No such file or directory\n`, 1);
+        return failure(`bash: ${target}: No such file or directory\n`);
       }
     }
   }
@@ -335,7 +353,12 @@ export async function executeGroup(
       error.prependOutput(stdout, stderr);
       throw error;
     }
-    return result(stdout, `${stderr}${getErrorMessage(error)}\n`, 1);
+    return result(
+      stdout,
+      stderr +
+        latin1FromBytes(encodeUtf8ToBytes(`${getErrorMessage(error)}\n`)),
+      1,
+    );
   }
 
   // Restore groupStdin

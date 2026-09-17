@@ -1,3 +1,8 @@
+import {
+  encodeUtf8ToBytes,
+  latin1FromBytes,
+  readBytesFrom,
+} from "../encoding.js";
 /**
  * Control Flow Execution
  *
@@ -33,7 +38,11 @@ import {
 } from "./expansion.js";
 import { executeCondition } from "./helpers/condition.js";
 import { handleLoopError } from "./helpers/loop.js";
-import { failure, result, throwExecutionLimit } from "./helpers/result.js";
+import {
+  failure,
+  byteResult as result,
+  throwExecutionLimit,
+} from "./helpers/result.js";
 import { executeStatements } from "./helpers/statements.js";
 import { applyRedirections, preOpenOutputRedirects } from "./redirections.js";
 import type { InterpreterContext } from "./types.js";
@@ -65,16 +74,20 @@ export async function executeIf(
           .map((line) => line.replace(/^\t+/, ""))
           .join("\n");
       }
-      effectiveStdin = content;
+      effectiveStdin = latin1FromBytes(encodeUtf8ToBytes(content));
       hasInputRedirection = true;
     } else if (redir.operator === "<<<" && redir.target.type === "Word") {
-      effectiveStdin = `${await expandWord(ctx, redir.target as WordNode)}\n`;
+      effectiveStdin = latin1FromBytes(
+        encodeUtf8ToBytes(
+          `${await expandWord(ctx, redir.target as WordNode)}\n`,
+        ),
+      );
       hasInputRedirection = true;
     } else if (redir.operator === "<" && redir.target.type === "Word") {
       try {
         const target = await expandWord(ctx, redir.target as WordNode);
         const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
-        effectiveStdin = await ctx.fs.readFile(filePath);
+        effectiveStdin = latin1FromBytes(await readBytesFrom(ctx.fs, filePath));
         hasInputRedirection = true;
       } catch {
         const target = await expandWord(ctx, redir.target as WordNode);
@@ -334,14 +347,18 @@ export async function executeWhile(
           .map((line) => line.replace(/^\t+/, ""))
           .join("\n");
       }
-      effectiveStdin = content;
+      effectiveStdin = latin1FromBytes(encodeUtf8ToBytes(content));
     } else if (redir.operator === "<<<" && redir.target.type === "Word") {
-      effectiveStdin = `${await expandWord(ctx, redir.target as WordNode)}\n`;
+      effectiveStdin = latin1FromBytes(
+        encodeUtf8ToBytes(
+          `${await expandWord(ctx, redir.target as WordNode)}\n`,
+        ),
+      );
     } else if (redir.operator === "<" && redir.target.type === "Word") {
       try {
         const target = await expandWord(ctx, redir.target as WordNode);
         const filePath = ctx.fs.resolvePath(ctx.state.cwd, target);
-        effectiveStdin = await ctx.fs.readFile(filePath);
+        effectiveStdin = latin1FromBytes(await readBytesFrom(ctx.fs, filePath));
       } catch {
         const target = await expandWord(ctx, redir.target as WordNode);
         return failure(`bash: ${target}: No such file or directory\n`);

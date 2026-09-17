@@ -5,11 +5,7 @@
  */
 
 import type { CommandNode, PipelineNode } from "../ast/types.js";
-import {
-  encodeUtf8ToBytes,
-  latin1FromBytes,
-  stdoutAsBytes,
-} from "../encoding.js";
+import { latin1FromBytes, stderrAsBytes, stdoutAsBytes } from "../encoding.js";
 import { _performanceNow } from "../security/trusted-globals.js";
 import type { ExecResult } from "../types.js";
 import { BadSubstitutionError, ErrexitError, ExitError } from "./errors.js";
@@ -102,6 +98,8 @@ export async function executePipeline(
         }
         result = {
           stdout: error.stdout,
+          stdoutKind: "bytes",
+          stderrKind: "bytes",
           stderr: error.stderr,
           exitCode: 1,
         };
@@ -112,6 +110,8 @@ export async function executePipeline(
       else if (error instanceof ExitError && node.commands.length > 1) {
         result = {
           stdout: error.stdout,
+          stdoutKind: "bytes",
+          stderrKind: "bytes",
           stderr: error.stderr,
           exitCode: error.exitCode,
         };
@@ -120,6 +120,8 @@ export async function executePipeline(
         // The pipeline's exit code comes from the last command (or pipefail)
         result = {
           stdout: error.stdout,
+          stdoutKind: "bytes",
+          stderrKind: "bytes",
           stderr: error.stderr,
           exitCode: error.exitCode,
         };
@@ -160,12 +162,12 @@ export async function executePipeline(
         // binary today); UTF-8 encode it before concatenating with the
         // stdout bytes so the merged stream is byte-shaped end-to-end.
         stdin =
-          latin1FromBytes(encodeUtf8ToBytes(result.stderr)) +
+          latin1FromBytes(stderrAsBytes(result)) +
           latin1FromBytes(stdoutAsBytes(result));
       } else {
         // Regular | only pipes stdout; stderr goes to the parent
         stdin = latin1FromBytes(stdoutAsBytes(result));
-        accumulatedStderr += result.stderr;
+        accumulatedStderr += latin1FromBytes(stderrAsBytes(result));
       }
       lastResult = {
         stdout: "",
@@ -183,7 +185,8 @@ export async function executePipeline(
   if (accumulatedStderr) {
     lastResult = {
       ...lastResult,
-      stderr: accumulatedStderr + lastResult.stderr,
+      stderr: accumulatedStderr + latin1FromBytes(stderrAsBytes(lastResult)),
+      stderrKind: "bytes",
     };
   }
 

@@ -1,3 +1,5 @@
+import { encodeUtf8ToBytes, latin1FromBytes } from "../encoding.js";
+
 /**
  * Control Flow Errors
  *
@@ -107,7 +109,9 @@ export class NounsetError extends ControlFlowError {
     super(
       `${varName}: unbound variable`,
       stdout,
-      `bash: ${varName}: unbound variable\n`,
+      latin1FromBytes(
+        encodeUtf8ToBytes(`bash: ${varName}: unbound variable\n`),
+      ),
     );
   }
 }
@@ -123,7 +127,7 @@ export class ExitError extends ControlFlowError {
     stdout: string = "",
     stderr: string = "",
   ) {
-    super(`exit`, stdout, stderr);
+    super(`exit`, stdout, latin1FromBytes(encodeUtf8ToBytes(stderr)));
   }
 }
 
@@ -147,7 +151,8 @@ export class ArithmeticError extends ControlFlowError {
     fatal = false,
   ) {
     super(message, stdout, stderr);
-    this.stderr = stderr || `bash: ${message}\n`;
+    this.stderr =
+      stderr || latin1FromBytes(encodeUtf8ToBytes(`bash: ${message}\n`));
     this.fatal = fatal;
   }
 }
@@ -161,7 +166,11 @@ export class BadSubstitutionError extends ControlFlowError {
 
   constructor(message: string, stdout: string = "", stderr: string = "") {
     super(message, stdout, stderr);
-    this.stderr = stderr || `bash: ${message}: bad substitution\n`;
+    this.stderr =
+      stderr ||
+      latin1FromBytes(
+        encodeUtf8ToBytes(`bash: ${message}: bad substitution\n`),
+      );
   }
 }
 
@@ -174,7 +183,9 @@ export class GlobError extends ControlFlowError {
 
   constructor(pattern: string, stdout: string = "", stderr: string = "") {
     super(`no match: ${pattern}`, stdout, stderr);
-    this.stderr = stderr || `bash: no match: ${pattern}\n`;
+    this.stderr =
+      stderr ||
+      latin1FromBytes(encodeUtf8ToBytes(`bash: no match: ${pattern}\n`));
   }
 }
 
@@ -187,7 +198,8 @@ export class BraceExpansionError extends ControlFlowError {
 
   constructor(message: string, stdout: string = "", stderr: string = "") {
     super(message, stdout, stderr);
-    this.stderr = stderr || `bash: ${message}\n`;
+    this.stderr =
+      stderr || latin1FromBytes(encodeUtf8ToBytes(`bash: ${message}\n`));
   }
 }
 
@@ -215,7 +227,8 @@ export class ExecutionLimitError extends ControlFlowError {
     stderr: string = "",
   ) {
     super(message, stdout, stderr);
-    this.stderr = stderr || `bash: ${message}\n`;
+    this.stderr =
+      stderr || latin1FromBytes(encodeUtf8ToBytes(`bash: ${message}\n`));
   }
 }
 
@@ -255,7 +268,11 @@ export class BuiltinFatalError extends ControlFlowError {
     stdout: string = "",
     stderr: string = "",
   ) {
-    super("builtin fatal error", stdout, stderr);
+    super(
+      "builtin fatal error",
+      stdout,
+      latin1FromBytes(encodeUtf8ToBytes(stderr)),
+    );
   }
 }
 
@@ -290,6 +307,10 @@ export class PosixFatalError extends ControlFlowError {
     stdout: string = "",
     stderr: string = "",
   ) {
-    super("posix fatal error", stdout, stderr);
+    super(
+      "posix fatal error",
+      stdout,
+      latin1FromBytes(encodeUtf8ToBytes(stderr)),
+    );
   }
 }

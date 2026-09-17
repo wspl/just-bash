@@ -1,3 +1,9 @@
+import {
+  encodeUtf8ToBytes,
+  latin1FromBytes,
+  stderrAsBytes,
+  stdoutAsBytes,
+} from "../encoding.js";
 /**
  * Redirection Handling
  *
@@ -47,31 +53,6 @@ async function checkOutputRedirectTarget(
     // File doesn't exist, that's ok - we'll create it
   }
   return null;
-}
-
-/**
- * Determine the encoding to use for file I/O.
- * If all character codes are <= 127 (ASCII), use binary encoding (byte data).
- * Otherwise, use UTF-8 encoding (text with non-ASCII characters).
- * For performance, only check the first 8KB of large strings.
- *
- * Characters in the 128-255 range (e.g. Latin-1: Ü Ö Ä é è) need UTF-8
- * encoding because their multi-byte UTF-8 representation would be lost
- * if stored as single bytes via binary encoding.
- */
-function getFileEncoding(content: string): "binary" | "utf8" {
-  const SAMPLE_SIZE = 8192; // 8KB
-
-  // For large strings, only check the first 8KB
-  // This is sufficient since UTF-8 files typically have Unicode chars early
-  const checkLength = Math.min(content.length, SAMPLE_SIZE);
-
-  for (let i = 0; i < checkLength; i++) {
-    if (content.charCodeAt(i) > 127) {
-      return "utf8";
-    }
-  }
-  return "binary";
 }
 
 /**
@@ -475,48 +456,9 @@ export async function applyRedirections(
   redirections: RedirectionNode[],
   preExpandedTargets?: ExpandedRedirectTargets,
 ): Promise<ExecResult> {
-  let { stdout, stderr, exitCode } = result;
-
-  // Determine encoding for stdout writes from the producer's explicit
-  // shape rather than guessing at the bytes:
-  //   - `stdoutKind: "bytes"` (or legacy `stdoutEncoding: "binary"` —
-  //     cat, gzip, base64 -d, ...): stdout is already a latin1 byte
-  //     buffer; write binary so the bytes round-trip verbatim.
-  //   - everything else (echo, printf, sed, jq, custom commands that
-  //     leave the field unset): stdout is JS Unicode text; write UTF-8.
-  //
-  // The default is text — never the content-sampling heuristic. The
-  // sampler reads only the first 8 KiB and would mis-classify long
-  // mostly-ASCII output that happens to have its first non-ASCII char
-  // past the window, picking binary and truncating downstream codepoints
-  // to their low byte.
-  const stdoutIsBytes =
-    result.stdoutKind === "bytes" ||
-    (result.stdoutKind === undefined && result.stdoutEncoding === "binary");
-  const stdoutFileEncoding: "binary" | "utf8" = stdoutIsBytes
-    ? "binary"
-    : "utf8";
-  const getStdoutEncoding = (_content: string): "binary" | "utf8" =>
-    stdoutFileEncoding;
-  const getFileRedirectTarget = async (
-    index: number,
-  ): Promise<string | null> => {
-    const preExpanded = preExpandedTargets?.get(index);
-    if (preExpanded !== undefined) {
-      return preExpanded;
-    }
-    const expandResult = await expandRedirectTarget(
-      ctx,
-      redirections[index].target as WordNode,
-    );
-    if ("error" in expandResult) {
-      stderr += expandResult.error;
-      exitCode = 1;
-      stdout = "";
-      return null;
-    }
-    return expandResult.target;
-  };
+  let stdout = latin1FromBytes(stdoutAsBytes(result));
+  let stderr = latin1FromBytes(stderrAsBytes(result));
+  let { exitCode } = result;
 
   // Where fds 1 and 2 currently point as the redirection list is processed
   // left to right. File redirections write their stream eagerly and update
@@ -552,7 +494,9 @@ export async function applyRedirections(
       if (isFdRedirect) {
         // Check for "$@" with multiple positional params - this is an ambiguous redirect
         if (hasQuotedMultiValueAt(ctx, redir.target as WordNode)) {
-          stderr += "bash: $@: ambiguous redirect\n";
+          stderr += latin1FromBytes(
+            encodeUtf8ToBytes("bash: $@: ambiguous redirect\n"),
+          );
           exitCode = 1;
           stdout = "";
           continue;
@@ -564,7 +508,7 @@ export async function applyRedirections(
           redir.target as WordNode,
         );
         if ("error" in expandResult) {
-          stderr += expandResult.error;
+          stderr += latin1FromBytes(encodeUtf8ToBytes(expandResult.error));
           exitCode = 1;
           // When redirect fails, discard the output that would have been redirected
           stdout = "";
@@ -582,7 +526,11 @@ export async function applyRedirections(
 
     // Reject paths containing null bytes - these cause filesystem errors
     if (target.includes("\0")) {
-      stderr += `bash: ${target.replace(/\0/g, "")}: No such file or directory\n`;
+      stderr += latin1FromBytes(
+        encodeUtf8ToBytes(
+          `bash: ${target.replace(/\0/g, "")}: No such file or directory\n`,
+        ),
+      );
       exitCode = 1;
       stdout = "";
       continue;
@@ -618,7 +566,11 @@ export async function applyRedirections(
         // /dev/full always returns ENOSPC when written to. The diagnostic
         // stays on live stderr and the fd's sink is left unchanged.
         if (target === "/dev/full") {
-          stderr += `bash: echo: write error: No space left on device\n`;
+          stderr += latin1FromBytes(
+            encodeUtf8ToBytes(
+              `bash: echo: write error: No space left on device\n`,
+            ),
+          );
           exitCode = 1;
           if (fd === 1) {
             stdout = "";
@@ -638,7 +590,7 @@ export async function applyRedirections(
           ...(isAppend ? {} : { checkNoclobber: true, isClobber }),
         });
         if (error) {
-          stderr += error;
+          stderr += latin1FromBytes(encodeUtf8ToBytes(error));
           exitCode = 1;
           if (fd === 1) {
             stdout = "";
@@ -717,7 +669,9 @@ export async function applyRedirections(
               ctx.state.fileDescriptors.set(fd, `__dupin__:${sourceFd}`);
             } else if (sourceFd >= 3) {
               // Source FD is a user FD (3+) that's not in fileDescriptors - bad file descriptor
-              stderr += `bash: ${sourceFd}: Bad file descriptor\n`;
+              stderr += latin1FromBytes(
+                encodeUtf8ToBytes(`bash: ${sourceFd}: Bad file descriptor\n`),
+              );
               exitCode = 1;
             }
           }
@@ -753,18 +707,10 @@ export async function applyRedirections(
               // The path is already resolved when the FD was allocated
               const resolvedPath = fdInfo.slice(9); // Remove "__file__:" prefix
               if (fd === 1) {
-                await ctx.fs.appendFile(
-                  resolvedPath,
-                  stdout,
-                  getStdoutEncoding(stdout),
-                );
+                await ctx.fs.appendFile(resolvedPath, stdout, "binary");
                 stdout = "";
               } else if (fd === 2) {
-                await ctx.fs.appendFile(
-                  resolvedPath,
-                  stderr,
-                  getFileEncoding(stderr),
-                );
+                await ctx.fs.appendFile(resolvedPath, stderr, "binary");
                 stderr = "";
               }
             } else if (fdInfo?.startsWith("__rw__:")) {
@@ -773,18 +719,10 @@ export async function applyRedirections(
               const parsed = parseRwFdContent(fdInfo);
               if (parsed) {
                 if (fd === 1) {
-                  await ctx.fs.appendFile(
-                    parsed.path,
-                    stdout,
-                    getStdoutEncoding(stdout),
-                  );
+                  await ctx.fs.appendFile(parsed.path, stdout, "binary");
                   stdout = "";
                 } else if (fd === 2) {
-                  await ctx.fs.appendFile(
-                    parsed.path,
-                    stderr,
-                    getFileEncoding(stderr),
-                  );
+                  await ctx.fs.appendFile(parsed.path, stderr, "binary");
                   stderr = "";
                 }
               }
@@ -807,32 +745,28 @@ export async function applyRedirections(
                 if (sourceInfo?.startsWith("__file__:")) {
                   const resolvedPath = sourceInfo.slice(9);
                   if (fd === 1) {
-                    await ctx.fs.appendFile(
-                      resolvedPath,
-                      stdout,
-                      getStdoutEncoding(stdout),
-                    );
+                    await ctx.fs.appendFile(resolvedPath, stdout, "binary");
                     stdout = "";
                   } else if (fd === 2) {
-                    await ctx.fs.appendFile(
-                      resolvedPath,
-                      stderr,
-                      getFileEncoding(stderr),
-                    );
+                    await ctx.fs.appendFile(resolvedPath, stderr, "binary");
                     stderr = "";
                   }
                 }
               }
             } else if (fdInfo?.startsWith("__dupin__:")) {
               // FD is duplicated for input - writing to it is an error
-              stderr += `bash: ${targetFd}: Bad file descriptor\n`;
+              stderr += latin1FromBytes(
+                encodeUtf8ToBytes(`bash: ${targetFd}: Bad file descriptor\n`),
+              );
               exitCode = 1;
               stdout = "";
             } else if (targetFd >= 3) {
               // User FD range (3+) but FD not found - bad file descriptor
               // For FDs 3-9 (manually allocated) and 10+ (auto-allocated),
               // if the FD is not in fileDescriptors, it means it was closed or never opened
-              stderr += `bash: ${targetFd}: Bad file descriptor\n`;
+              stderr += latin1FromBytes(
+                encodeUtf8ToBytes(`bash: ${targetFd}: Bad file descriptor\n`),
+              );
               exitCode = 1;
               stdout = "";
             }
@@ -966,10 +900,10 @@ export async function applyRedirections(
       // bare `2>&1`.
       const combined = pendingStdout + pendingStderr;
       if (combined !== "") {
-        await deliverToFile(fd1Sink, combined, getStdoutEncoding(combined));
+        await deliverToFile(fd1Sink, combined, "binary");
       }
     } else {
-      for (const [content, sink, isStdout] of [
+      for (const [content, sink] of [
         [pendingStdout, fd1Sink, true],
         [pendingStderr, fd2Sink, false],
       ] as const) {
@@ -984,11 +918,7 @@ export async function applyRedirections(
             stderr += content;
             break;
           case "file":
-            await deliverToFile(
-              sink,
-              content,
-              isStdout ? getStdoutEncoding(content) : getFileEncoding(content),
-            );
+            await deliverToFile(sink, content, "binary");
             break;
           case "discard":
             break;
@@ -1008,11 +938,11 @@ export async function applyRedirections(
     } else if (fd1Info.startsWith("__file__:")) {
       // fd 1 is redirected to a file
       const filePath = fd1Info.slice(9);
-      await ctx.fs.appendFile(filePath, stdout, getStdoutEncoding(stdout));
+      await ctx.fs.appendFile(filePath, stdout, "binary");
       stdout = "";
     } else if (fd1Info.startsWith("__file_append__:")) {
       const filePath = fd1Info.slice(16);
-      await ctx.fs.appendFile(filePath, stdout, getStdoutEncoding(stdout));
+      await ctx.fs.appendFile(filePath, stdout, "binary");
       stdout = "";
     }
   }
@@ -1026,25 +956,14 @@ export async function applyRedirections(
       stderr = "";
     } else if (fd2Info.startsWith("__file__:")) {
       const filePath = fd2Info.slice(9);
-      await ctx.fs.appendFile(filePath, stderr, getFileEncoding(stderr));
+      await ctx.fs.appendFile(filePath, stderr, "binary");
       stderr = "";
     } else if (fd2Info.startsWith("__file_append__:")) {
       const filePath = fd2Info.slice(16);
-      await ctx.fs.appendFile(filePath, stderr, getFileEncoding(stderr));
+      await ctx.fs.appendFile(filePath, stderr, "binary");
       stderr = "";
     }
   }
 
-  const finalResult = makeResult(stdout, stderr, exitCode);
-  // Preserve the upstream's stdout shape through the redirection layer so
-  // the next stage (pipeline glue, output boundary) can tell bytes-shaped
-  // output from text-shaped output. Both the new `stdoutKind` field and
-  // the legacy `stdoutEncoding` alias are forwarded.
-  if (result.stdoutKind) {
-    finalResult.stdoutKind = result.stdoutKind;
-  }
-  if (result.stdoutEncoding === "binary") {
-    finalResult.stdoutEncoding = "binary";
-  }
-  return finalResult;
+  return { stdout, stdoutKind: "bytes", stderr, stderrKind: "bytes", exitCode };
 }

@@ -1,3 +1,4 @@
+import { decodedStderrFromResult, outputForTextConsumer } from "./encoding.js";
 /**
  * Bash - Bash Shell Environment
  *
@@ -711,7 +712,7 @@ export class Bash {
         const interpreter = new Interpreter(interpreterOptions, execState);
         const result = await interpreter.executeScript(ast);
         // Interpreter always sets env, assert it for type safety
-        const execResult = result as BashExecResult;
+        const execResult = outputForTextConsumer(result) as BashExecResult;
         if (metadata) {
           execResult.metadata = metadata;
         }
@@ -727,8 +728,14 @@ export class Bash {
       // ExitError propagates from 'exit' builtin (including via eval/source)
       if (error instanceof ExitError) {
         return this.logResult({
-          stdout: error.stdout,
-          stderr: error.stderr,
+          ...outputForTextConsumer({
+            stdout: error.stdout,
+            stdoutKind: "bytes",
+          }),
+          stderr: decodedStderrFromResult({
+            stderr: error.stderr,
+            stderrKind: "bytes",
+          }),
           exitCode: error.exitCode,
           env: mapToRecordWithExtras(this.state.env, options?.env),
         });
@@ -736,16 +743,28 @@ export class Bash {
       // PosixFatalError propagates from special builtins in POSIX mode
       if (error instanceof PosixFatalError) {
         return this.logResult({
-          stdout: error.stdout,
-          stderr: error.stderr,
+          ...outputForTextConsumer({
+            stdout: error.stdout,
+            stdoutKind: "bytes",
+          }),
+          stderr: decodedStderrFromResult({
+            stderr: error.stderr,
+            stderrKind: "bytes",
+          }),
           exitCode: error.exitCode,
           env: mapToRecordWithExtras(this.state.env, options?.env),
         });
       }
       if (error instanceof ArithmeticError) {
         return this.logResult({
-          stdout: error.stdout,
-          stderr: error.stderr,
+          ...outputForTextConsumer({
+            stdout: error.stdout,
+            stdoutKind: "bytes",
+          }),
+          stderr: decodedStderrFromResult({
+            stderr: error.stderr,
+            stderrKind: "bytes",
+          }),
           exitCode: 1,
           env: mapToRecordWithExtras(this.state.env, options?.env),
         });
@@ -753,8 +772,14 @@ export class Bash {
       // ExecutionAbortedError is thrown when an AbortSignal fires (timeout cancellation)
       if (error instanceof ExecutionAbortedError) {
         return this.logResult({
-          stdout: error.stdout,
-          stderr: error.stderr,
+          ...outputForTextConsumer({
+            stdout: error.stdout,
+            stdoutKind: "bytes",
+          }),
+          stderr: decodedStderrFromResult({
+            stderr: error.stderr,
+            stderrKind: "bytes",
+          }),
           exitCode: 124, // Same as timeout exit code
           env: mapToRecordWithExtras(this.state.env, options?.env),
         });
@@ -763,7 +788,10 @@ export class Bash {
       // (command count, recursion depth, loop iterations)
       if (error instanceof ExecutionLimitError) {
         return this.logResult({
-          stdout: error.stdout,
+          ...outputForTextConsumer({
+            stdout: error.stdout,
+            stdoutKind: "bytes",
+          }),
           stderr: sanitizeErrorMessage(error.stderr),
           exitCode: ExecutionLimitError.EXIT_CODE,
           env: mapToRecordWithExtras(this.state.env, options?.env),

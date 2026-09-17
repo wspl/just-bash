@@ -1,3 +1,4 @@
+import { encodeUtf8ToBytes, latin1FromBytes } from "../../encoding.js";
 /**
  * Loop Error Handling Helpers
  *
@@ -87,7 +88,7 @@ export function handleLoopError(
   return {
     action: "error",
     stdout,
-    stderr: `${stderr}${message}\n`,
+    stderr: stderr + latin1FromBytes(encodeUtf8ToBytes(`${message}\n`)),
     exitCode: 1,
   };
 }

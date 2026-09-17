@@ -1,5 +1,11 @@
 # just-bash
 
+## 3.1.0-demi.6
+
+- Preserve explicitly typed stdout/stderr bytes through script aggregation, compound commands, redirections, pipelines, and control-flow exits.
+- Encode text input at heredoc and compound/function boundaries, and retain invalid byte output without encoding guesses.
+- Keep the public text view for valid UTF-8, including BOM characters.
+
 ## 3.1.0
 
 ### Minor Changes

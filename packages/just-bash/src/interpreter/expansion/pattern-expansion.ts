@@ -1,3 +1,4 @@
+import { decodedTextFromResult } from "../../encoding.js";
 /**
  * Pattern Expansion
  *
@@ -138,7 +139,7 @@ async function executeCommandSubstitutionFromString(
         (ctx.state.expansionStderr || "") + result.stderr;
     }
     ctx.state.bashPid = savedBashPid;
-    return result.stdout.replace(/\n+$/, "");
+    return decodedTextFromResult(result).replace(/\n+$/, "");
   } catch (error) {
     ctx.state.env = savedEnv;
     ctx.state.cwd = savedCwd;

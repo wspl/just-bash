@@ -47,6 +47,8 @@ export interface ExecResult {
    * commands that haven't been migrated yet.
    */
   stdoutKind?: "text" | "bytes";
+  /** Explicit shape of stderr; unmarked command diagnostics are Unicode text. */
+  stderrKind?: "text" | "bytes";
   /**
    * Legacy alias for `stdoutKind: "bytes"`. Older commands set this to
    * `"binary"` to mark binary output. New code should prefer `stdoutKind`.
