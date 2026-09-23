@@ -1,0 +1,29 @@
+{
+  "171d49db2bcab4e7": {
+    "command": "read -r value < input; printf \"%s\" \"$value\" | base64",
+    "files": {
+      "input": "中文 🙂 café Ã©\n下一行\n"
+    },
+    "stdout": "5Lit5paHIPCfmYIgY2Fmw6kgw4PCqQ==\n",
+    "stderr": "",
+    "exitCode": 0
+  },
+  "738c64d902c3db8b": {
+    "command": "while read -r value; do printf \"%s\\n\" \"$value\"; done < input",
+    "files": {
+      "input": "中文 🙂 café Ã©\n下一行\n"
+    },
+    "stdout": "中文 🙂 café Ã©\n下一行\n",
+    "stderr": "",
+    "exitCode": 0
+  },
+  "e41673f493eab24c": {
+    "command": "read -r -a values < input; printf \"%s\\n\" \"${values[@]}\"",
+    "files": {
+      "input": "中文 🙂 café Ã©\n下一行\n"
+    },
+    "stdout": "中文\n🙂\ncafé\nÃ©\n",
+    "stderr": "",
+    "exitCode": 0
+  }
+}

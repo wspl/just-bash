@@ -1,5 +1,10 @@
 # just-bash
 
+## 3.1.0-demi.7
+
+- Decode byte input before assigning shell `read` variables to prevent UTF-8 mojibake in command arguments and piped JSON.
+- Preserve remaining input and descriptor positions while reading Unicode characters with `-n` and `-N`.
+
 ## 3.1.0-demi.6
 
 - Preserve explicitly typed stdout/stderr bytes through script aggregation, compound commands, redirections, pipelines, and control-flow exits.

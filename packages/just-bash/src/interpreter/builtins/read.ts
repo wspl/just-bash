@@ -2,6 +2,12 @@
  * read - Read a line of input builtin
  */
 
+import {
+  decodeBytesToUtf8,
+  encodeUtf8ToBytes,
+  latin1FromBytes,
+  unsafeBytesFromLatin1,
+} from "../../encoding.js";
 import type { ExecResult } from "../../types.js";
 import { clearArray } from "../helpers/array.js";
 import {
@@ -278,6 +284,14 @@ export function handleRead(
     effectiveStdin = ctx.state.groupStdin;
   }
 
+  // Pipes and redirections carry bytes; shell variables contain text.
+  // Explicit -u descriptors already store text, unlike pipeline stdin.
+  const inputBytes = effectiveStdin;
+  if (fileDescriptor < 0) {
+    effectiveStdin = decodeBytesToUtf8(unsafeBytesFromLatin1(inputBytes));
+  }
+  const decodedInput = effectiveStdin !== inputBytes;
+
   // Handle -d '' (empty delimiter) - reads until NUL byte
   // Empty string delimiter means read until NUL byte (\0)
   const effectiveDelimiter = delimiter === "" ? "\0" : delimiter;
@@ -288,11 +302,16 @@ export function handleRead(
   let foundDelimiter = true; // Assume found unless no newline at end
 
   // Helper to consume from the appropriate source
-  const consumeInput = (bytesConsumed: number) => {
+  const consumeInput = (charsConsumed: number) => {
+    const bytesConsumed = decodedInput
+      ? latin1FromBytes(
+          encodeUtf8ToBytes(effectiveStdin.slice(0, charsConsumed)),
+        ).length
+      : charsConsumed;
     if (fileDescriptor >= 0 && ctx.state.fileDescriptors) {
       ctx.state.fileDescriptors.set(
         fileDescriptor,
-        effectiveStdin.substring(bytesConsumed),
+        inputBytes.substring(bytesConsumed),
       );
     } else if (stdinSourceFd >= 0 && ctx.state.fileDescriptors) {
       // Update the position of a read-write FD that was redirected to stdin
@@ -300,8 +319,8 @@ export function handleRead(
       if (fdContent?.startsWith("__rw__:")) {
         const parsed = parseRwFdContent(fdContent);
         if (parsed) {
-          // Advance position by bytesConsumed
-          const newPosition = parsed.position + bytesConsumed;
+          // Read-write descriptors store decoded text and use string offsets.
+          const newPosition = parsed.position + charsConsumed;
           ctx.state.fileDescriptors.set(
             stdinSourceFd,
             encodeRwFdContent(parsed.path, newPosition, parsed.content),
@@ -309,16 +328,20 @@ export function handleRead(
         }
       }
     } else if (ctx.state.groupStdin !== undefined && !stdin) {
-      ctx.state.groupStdin = effectiveStdin.substring(bytesConsumed);
+      ctx.state.groupStdin = inputBytes.substring(bytesConsumed);
     }
   };
 
   if (ncharsExact >= 0) {
     // -N: Read exactly N characters (ignores delimiters, no IFS splitting)
-    const toRead = Math.min(ncharsExact, effectiveStdin.length);
-    line = effectiveStdin.substring(0, toRead);
-    consumed = toRead;
-    foundDelimiter = toRead >= ncharsExact;
+    let count = 0;
+    for (const char of effectiveStdin) {
+      if (count >= ncharsExact) break;
+      line += char;
+      consumed += char.length;
+      count++;
+    }
+    foundDelimiter = count >= ncharsExact;
 
     // Consume from appropriate source
     consumeInput(consumed);
@@ -338,7 +361,9 @@ export function handleRead(
     let inputPos = 0;
     let hitDelimiter = false;
     while (inputPos < effectiveStdin.length && charCount < nchars) {
-      const char = effectiveStdin[inputPos];
+      const char = String.fromCodePoint(
+        effectiveStdin.codePointAt(inputPos) ?? 0,
+      );
       if (char === effectiveDelimiter) {
         consumed = inputPos + 1;
         hitDelimiter = true;
@@ -347,29 +372,31 @@ export function handleRead(
       if (!raw && char === "\\" && inputPos + 1 < effectiveStdin.length) {
         // Backslash escape: consume both chars, but only count as 1 char
         // The escaped character is kept, backslash is removed
-        const nextChar = effectiveStdin[inputPos + 1];
+        const nextChar = String.fromCodePoint(
+          effectiveStdin.codePointAt(inputPos + 1) ?? 0,
+        );
         if (nextChar === effectiveDelimiter && effectiveDelimiter === "\n") {
           // Backslash-newline is a line continuation: consume both, don't count as a char
           // Continue reading from the next line
-          inputPos += 2;
+          inputPos += 1 + nextChar.length;
           consumed = inputPos;
           continue;
         }
         if (nextChar === effectiveDelimiter) {
           // Backslash-delimiter (non-newline): counts as one char (the escaped delimiter)
-          inputPos += 2;
+          inputPos += 1 + nextChar.length;
           charCount++;
           line += nextChar;
           consumed = inputPos;
           continue;
         }
         line += nextChar;
-        inputPos += 2;
+        inputPos += 1 + nextChar.length;
         charCount++;
         consumed = inputPos;
       } else {
         line += char;
-        inputPos++;
+        inputPos += char.length;
         charCount++;
         consumed = inputPos;
       }

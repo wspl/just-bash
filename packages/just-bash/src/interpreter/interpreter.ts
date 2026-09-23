@@ -858,7 +858,9 @@ export class Interpreter {
               const parsed = parseRwFdContent(fdContent);
               if (parsed) {
                 // Return content starting from current position
-                stdin = parsed.content.slice(parsed.position);
+                stdin = latin1FromBytes(
+                  encodeUtf8ToBytes(parsed.content.slice(parsed.position)),
+                );
                 stdinSourceFd = sourceFd;
               }
             } else if (
@@ -868,7 +870,7 @@ export class Interpreter {
               // These are output-only, can't read from them
             } else {
               // Plain content (from exec N< file or here-docs)
-              stdin = fdContent;
+              stdin = latin1FromBytes(encodeUtf8ToBytes(fdContent));
             }
           }
         }
