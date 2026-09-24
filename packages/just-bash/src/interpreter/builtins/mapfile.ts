@@ -13,6 +13,7 @@
  *   array      Array name (default: MAPFILE)
  */
 
+import { decodeBytesToUtf8, unsafeBytesFromLatin1 } from "../../encoding.js";
 import type { ExecResult } from "../../types.js";
 import { clearArray } from "../helpers/array.js";
 import { result } from "../helpers/result.js";
@@ -67,6 +68,9 @@ export function handleMapfile(
   if (!effectiveStdin && ctx.state.groupStdin !== undefined) {
     effectiveStdin = ctx.state.groupStdin;
   }
+
+  // Decode byte transport before assigning text to shell array variables.
+  effectiveStdin = decodeBytesToUtf8(unsafeBytesFromLatin1(effectiveStdin));
 
   // Split input by delimiter
   const lines: string[] = [];
